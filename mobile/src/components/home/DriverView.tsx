@@ -6,6 +6,8 @@ import PillSelector from '@/components/PillSelector';
 import { calculatePrice, CATEGORY_LABEL, money, VehicleCategory } from '@/constants/pricing';
 import { Colors, Radius, Shadow } from '@/constants/theme';
 import { PassengerRequest, REQUESTS, RideTime, TIMES } from '@/data/rides';
+import { useShareLocation } from '@/hooks/useShareLocation';
+import { useUserLocation } from '@/hooks/useUserLocation';
 import { setUser, useUser } from '@/store/user';
 
 import BottomSheet from './BottomSheet';
@@ -26,6 +28,10 @@ export default function DriverView() {
   const [seats, setSeats] = useState(MAX_SEATS);
   const [requests, setRequests] = useState<PassengerRequest[]>(REQUESTS);
   const [accepted, setAccepted] = useState<PassengerRequest[]>([]);
+
+  // En línea, el conductor comparte su ubicación en vivo para que sus pasajeros lo vean acercarse
+  const { coords: me } = useUserLocation();
+  useShareLocation(online, me);
 
   const priceOf = (r: PassengerRequest) => calculatePrice(r.pickupKm + r.tripKm, category);
 

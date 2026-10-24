@@ -18,12 +18,13 @@ type Props = {
   pins: MapPin[];
   selectedId?: string | null;
   onSelect?: (id: string) => void;
+  driver?: Coords | null; // posición en vivo del conductor (pasajero ya aceptado)
 };
 
 // Mapa a pantalla completa detrás del panel (estilo Uber/DiDi).
 // Corre MapLibre + OpenFreeMap dentro de un WebView: gratis y sin ninguna API key
 // (ni de Google ni de otro proveedor). Ver mapHtml.ts.
-export default function MapBackground({ pins, selectedId, onSelect }: Props) {
+export default function MapBackground({ pins, selectedId, onSelect, driver }: Props) {
   const webRef = useRef<any>(null);
   const [ready, setReady] = useState(false);
   const { coords: me } = useUserLocation();
@@ -45,6 +46,25 @@ export default function MapBackground({ pins, selectedId, onSelect }: Props) {
       run(`window.trempFit(${JSON.stringify([me, ANAHUAC])})`);
     }
   }, [ready, me]);
+
+  // Carrito del conductor; la primera vez que aparece encuadra conductor + yo
+  const driverShown = useRef(false);
+  const meRef = useRef<Coords | null>(null);
+  useEffect(() => {
+    meRef.current = me;
+  }, [me]);
+  useEffect(() => {
+    if (!ready) return;
+    run(`window.trempSetDriver(${JSON.stringify(driver ?? null)})`);
+    if (!driver) {
+      driverShown.current = false;
+      return;
+    }
+    if (!driverShown.current) {
+      driverShown.current = true;
+      run(`window.trempFit(${JSON.stringify([driver, meRef.current ?? ANAHUAC])})`);
+    }
+  }, [ready, driver]);
 
   const onMessage = (raw: string) => {
     let msg: any;

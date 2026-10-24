@@ -10,6 +10,7 @@ export type RideTime = (typeof TIMES)[number];
 
 export type Ride = {
   id: string;
+  driverId?: string; // id del conductor en el backend; los rides de prueba no tienen
   driver: string;
   driverGender: 'hombre' | 'mujer';
   rating: number;
