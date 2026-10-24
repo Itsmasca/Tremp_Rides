@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react';
 import { ANAHUAC, Coords } from '@/data/rides';
 import { distanceKm } from '@/utils/geo';
 
-// Zona de servicio: Mérida y alrededores. Fuera de este radio ignoramos el GPS
-// (por ejemplo, el emulador de Android trae por defecto Mountain View, California).
+// Zona de servicio: Mérida y alrededores. Fuera de este radio no usamos el GPS sino la Anáhuac
+// (por ejemplo, el emulador de Android trae por defecto Mountain View, California), para que la demo
+// funcione en cualquier emulador o navegador sin configurar la ubicación.
 export const SERVICE_RADIUS_KM = 35;
 
 type State = {
-  coords: Coords | null; // null si no hay permiso o si estás fuera de Mérida
+  coords: Coords | null; // null si no hay permiso; la Anáhuac si el GPS está fuera de Mérida
   granted: boolean | null; // null = todavía no se pidió
   outOfArea: boolean; // true si el GPS reporta una posición fuera de la zona de servicio
 };
@@ -56,5 +57,5 @@ export function useUserLocation(): State {
   }, []);
 
   const outOfArea = !!state.coords && distanceKm(state.coords, ANAHUAC) > SERVICE_RADIUS_KM;
-  return { coords: outOfArea ? null : state.coords, granted: state.granted, outOfArea };
+  return { coords: outOfArea ? ANAHUAC : state.coords, granted: state.granted, outOfArea };
 }

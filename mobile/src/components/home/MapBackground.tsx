@@ -90,7 +90,7 @@ export default function MapBackground({ pins, selectedId, onSelect, driver }: Pr
       {outOfArea && (
         <View style={styles.areaNotice}>
           <Ionicons name="alert-circle-outline" size={16} color={Colors.textSecondary} />
-          <Text style={styles.areaText}>Tu ubicación está fuera de Mérida. Mostramos la zona de la Anáhuac.</Text>
+          <Text style={styles.areaText}>Tu ubicación está fuera de Mérida. Usamos la Anáhuac Mayab como tu ubicación.</Text>
         </View>
       )}
 
