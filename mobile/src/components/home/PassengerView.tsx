@@ -4,39 +4,32 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { calculatePrice, money } from '@/constants/pricing';
 import { Colors, Radius } from '@/constants/theme';
-import { Ride, RIDES } from '@/data/rides';
-import { useUser } from '@/store/user';
+import PillSelector from '@/components/PillSelector';
+import { Ride, RIDES, RideTime, TIMES } from '@/data/rides';
+import { setUser, useUser } from '@/store/user';
 
 import BottomSheet from './BottomSheet';
 import MapBackground from './MapBackground';
 
-type Filter = 'todos' | 'conductoras' | 'barato' | 'pronto';
 type RequestStatus = 'esperando' | 'aceptado';
-
-const FILTERS: { label: string; value: Filter }[] = [
-  { label: 'Todos', value: 'todos' },
-  { label: 'Solo conductoras', value: 'conductoras' },
-  { label: 'Más barato', value: 'barato' },
-  { label: 'Llega antes', value: 'pronto' },
-];
 
 // El precio siempre lo calcula el sistema a partir de los km del servidor
 const priceOf = (r: Ride) => calculatePrice(r.pickupKm + r.tripKm, r.vehicle);
 
 export default function PassengerView() {
   const user = useUser();
-  const [filter, setFilter] = useState<Filter>(user.womenOnly ? 'conductoras' : 'todos');
+  const [time, setTime] = useState<RideTime | null>(user.time);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [requested, setRequested] = useState<Ride | null>(null);
   const [status, setStatus] = useState<RequestStatus>('esperando');
 
   const rides = useMemo(() => {
-    let list = [...RIDES];
-    if (filter === 'conductoras') list = list.filter((r) => r.driverGender === 'mujer');
-    if (filter === 'barato') list.sort((a, b) => priceOf(a).passengerPays - priceOf(b).passengerPays);
-    if (filter === 'pronto') list.sort((a, b) => a.etaMin - b.etaMin);
+    // "Solo conductoras" viene del registro; no es un filtro que se cambie aquí
+    const list = user.womenOnly ? RIDES.filter((r) => r.driverGender === 'mujer') : [...RIDES];
+    // Primero los rides que salen a la hora que eligió el pasajero
+    if (time) list.sort((a, b) => Number(b.departure === time) - Number(a.departure === time));
     return list;
-  }, [filter]);
+  }, [user.womenOnly, time]);
 
   const selected = rides.find((r) => r.id === selectedId) ?? null;
   const pins = (requested ? [requested] : rides).map((r) => ({ id: r.id, coords: r.coords, title: r.driver }));
@@ -137,15 +130,17 @@ export default function PassengerView() {
           </View>
         </View>
 
-        <View style={styles.filters}>
-          {FILTERS.map((f) => (
-            <TouchableOpacity
-              key={f.value}
-              onPress={() => setFilter(f.value)}
-              style={[styles.chip, filter === f.value && styles.chipActive]}>
-              <Text style={[styles.chipText, filter === f.value && styles.chipTextActive]}>{f.label}</Text>
-            </TouchableOpacity>
-          ))}
+        <Text style={styles.label}>¿A qué hora quieres salir?</Text>
+        <View style={styles.times}>
+          <PillSelector
+            options={TIMES.map((t) => ({ label: t, value: t }))}
+            value={time}
+            onChange={(t) => {
+              setTime(t);
+              setUser({ time: t });
+              setSelectedId(null);
+            }}
+          />
         </View>
 
         {rides.map((ride) => {
@@ -164,9 +159,11 @@ export default function PassengerView() {
                   <Text style={styles.rideName}>
                     {ride.driver} <Text style={styles.rating}>★ {ride.rating.toFixed(1)}</Text>
                   </Text>
-                  <Text style={styles.muted}>
-                    {ride.origin} · sale {ride.departure}
+                  <Text style={[styles.muted, time === ride.departure && styles.match]}>
+                    Sale {ride.departure}
+                    {time === ride.departure ? ' · coincide contigo' : ''}
                   </Text>
+                  <Text style={styles.muted}>{ride.origin}</Text>
                   <Text style={styles.muted}>
                     {ride.car} · {ride.seats} {ride.seats === 1 ? 'lugar' : 'lugares'}
                   </Text>
@@ -195,16 +192,9 @@ const styles = StyleSheet.create({
   dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.primary },
   square: { width: 10, height: 10, backgroundColor: Colors.text },
   routeText: { fontSize: 16, color: Colors.text },
-  filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  chip: {
-    paddingVertical: 7,
-    paddingHorizontal: 14,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.background,
-  },
-  chipActive: { backgroundColor: Colors.primary },
-  chipText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
-  chipTextActive: { color: '#FFFFFF' },
+  label: { fontSize: 14, fontWeight: '700', color: Colors.text, marginBottom: 8 },
+  times: { marginBottom: 14 },
+  match: { color: Colors.primaryDark, fontWeight: '600' },
   rideRow: {
     flexDirection: 'row',
     alignItems: 'center',

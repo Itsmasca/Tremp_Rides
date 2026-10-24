@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
 import { VehicleCategory } from '@/constants/pricing';
+import { RideTime } from '@/data/rides';
 
 // Estado global mínimo del usuario (sin librerías, ideal para hackathon)
 export type Role = 'pasajero' | 'conductor';
@@ -13,6 +14,7 @@ export type User = {
   vehicleType: VehicleCategory | null;
   carName: string | null; // del catálogo de la plataforma
   role: Role;
+  time: RideTime | null; // horario habitual para ir a la Anáhuac
 };
 
 let user: User = {
@@ -23,6 +25,7 @@ let user: User = {
   vehicleType: null,
   carName: null,
   role: 'pasajero',
+  time: null,
 };
 
 const listeners = new Set<() => void>();

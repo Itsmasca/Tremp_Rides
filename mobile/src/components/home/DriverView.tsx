@@ -5,13 +5,14 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import PillSelector from '@/components/PillSelector';
 import { calculatePrice, CATEGORY_LABEL, money, VehicleCategory } from '@/constants/pricing';
 import { Colors, Radius, Shadow } from '@/constants/theme';
-import { PassengerRequest, REQUESTS } from '@/data/rides';
-import { useUser } from '@/store/user';
+import { PassengerRequest, REQUESTS, RideTime, TIMES } from '@/data/rides';
+import { setUser, useUser } from '@/store/user';
 
 import BottomSheet from './BottomSheet';
 import MapBackground from './MapBackground';
 
-const TIMES = ['6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM'];
+// Un conductor ofrece como máximo 3 lugares
+const MAX_SEATS = 3;
 
 export default function DriverView() {
   const user = useUser();
@@ -21,8 +22,8 @@ export default function DriverView() {
 
   const [online, setOnline] = useState(false);
   const [published, setPublished] = useState(false);
-  const [time, setTime] = useState<string | null>('7:00 AM');
-  const [seats, setSeats] = useState(3);
+  const [time, setTime] = useState<RideTime | null>(user.time ?? '7:00 AM');
+  const [seats, setSeats] = useState(MAX_SEATS);
   const [requests, setRequests] = useState<PassengerRequest[]>(REQUESTS);
   const [accepted, setAccepted] = useState<PassengerRequest[]>([]);
 
@@ -98,10 +99,8 @@ export default function DriverView() {
               <Text style={styles.muted}>Recibes hoy</Text>
             </View>
             <View style={styles.stat}>
-              <Text style={styles.statValue}>
-                {accepted.length}/{seats}
-              </Text>
-              <Text style={styles.muted}>Lugares</Text>
+              <Text style={styles.statValue}>{seats - accepted.length}</Text>
+              <Text style={styles.muted}>{seats - accepted.length === 1 ? 'Lugar libre' : 'Lugares libres'}</Text>
             </View>
             <View style={styles.stat}>
               <Text style={styles.statValue}>4.9</Text>
@@ -112,18 +111,21 @@ export default function DriverView() {
           {!published ? (
             <>
               <Text style={styles.section}>Publica tu viaje a la Anáhuac</Text>
-              <Text style={styles.label}>Hora de salida</Text>
-              <PillSelector options={TIMES.map((t) => ({ label: t, value: t }))} value={time} onChange={setTime} />
-              <Text style={styles.label}>Lugares disponibles</Text>
-              <View style={styles.stepper}>
-                <TouchableOpacity style={styles.stepBtn} onPress={() => setSeats((s) => Math.max(1, s - 1))}>
-                  <Ionicons name="remove" size={22} color={Colors.text} />
-                </TouchableOpacity>
-                <Text style={styles.stepValue}>{seats}</Text>
-                <TouchableOpacity style={styles.stepBtn} onPress={() => setSeats((s) => Math.min(6, s + 1))}>
-                  <Ionicons name="add" size={22} color={Colors.text} />
-                </TouchableOpacity>
-              </View>
+              <Text style={styles.label}>¿A qué hora sales?</Text>
+              <PillSelector
+                options={TIMES.map((t) => ({ label: t, value: t }))}
+                value={time}
+                onChange={(t) => {
+                  setTime(t);
+                  setUser({ time: t });
+                }}
+              />
+              <Text style={styles.label}>¿Cuántos pasajeros puedes llevar? (máximo {MAX_SEATS})</Text>
+              <PillSelector
+                options={[1, 2, 3].map((n) => ({ label: `${n} ${n === 1 ? 'pasajero' : 'pasajeros'}`, value: String(n) }))}
+                value={String(seats)}
+                onChange={(v) => setSeats(Number(v))}
+              />
 
               <TouchableOpacity activeOpacity={0.85} style={styles.publish} onPress={() => setPublished(true)}>
                 <Text style={styles.publishText}>Publicar viaje</Text>
@@ -134,7 +136,7 @@ export default function DriverView() {
               <View style={styles.tripCard}>
                 <Ionicons name="navigate" size={20} color={Colors.primaryDark} />
                 <Text style={styles.tripText}>
-                  Sales {time} · {seats} {seats === 1 ? 'lugar' : 'lugares'}
+                  Sales {time} · {seats - accepted.length} de {seats} {seats === 1 ? 'lugar libre' : 'lugares libres'}
                 </Text>
                 <TouchableOpacity onPress={cancelTrip}>
                   <Text style={styles.cancelLink}>Cancelar</Text>
@@ -156,6 +158,10 @@ export default function DriverView() {
                       </Text>
                       <Text style={styles.muted}>
                         {r.pickup} · {b.km} km
+                      </Text>
+                      <Text style={[styles.muted, r.time === time && styles.match]}>
+                        Quiere salir {r.time}
+                        {r.time === time ? ' · coincide contigo' : ''}
                       </Text>
                       <Text style={styles.amount}>{money(b.passengerPays)}</Text>
                     </View>
@@ -233,16 +239,7 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 18, fontWeight: '800', color: Colors.text },
   section: { fontSize: 17, fontWeight: '800', color: Colors.text, marginTop: 20, marginBottom: 10 },
   label: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary, marginTop: 12, marginBottom: 8 },
-  stepper: { flexDirection: 'row', alignItems: 'center', gap: 20 },
-  stepBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stepValue: { fontSize: 22, fontWeight: '800', color: Colors.text, minWidth: 24, textAlign: 'center' },
+  match: { color: Colors.primaryDark, fontWeight: '600' },
   publish: { marginTop: 20, backgroundColor: Colors.primary, borderRadius: Radius.md, paddingVertical: 16, alignItems: 'center' },
   publishText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
   tripCard: {
