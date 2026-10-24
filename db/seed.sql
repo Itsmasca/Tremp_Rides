@@ -2,7 +2,7 @@
 
 -- Configuracion: precio de gasolina de referencia (semi-automatiza el calculo)
 INSERT INTO config (clave, valor, descripcion) VALUES
-    ('precio_litro_gasolina', '24.00', 'Precio de referencia por litro (MXN)'),
+    ('precio_litro_gasolina', '27.39', 'Gasolina Premium (roja) en Yucatán, MXN por litro (issue #4)'),
     ('moneda', 'MXN', 'Moneda del sistema');
 
 -- Usuarios demo (password_hash es solo ilustrativo; en real usar bcrypt/argon2)

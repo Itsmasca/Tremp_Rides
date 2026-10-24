@@ -112,7 +112,7 @@ Tarjetas de prueba: `4242 4242 4242 4242` (aprobada), `4000 0025 0000 3155` (3-D
 
 | # | Qué | Sin esto |
 |---|---|---|
-| D1 | Precio por litro: #4 usa Premium $27.39; `config`/seed tienen $24.00. | Montos distintos entre app y servidor. |
+| D1 | ~~Precio por litro~~ **Resuelto 2026-10-24:** Premium $27.39 (#4) en `config` y seed. Falta la actualización automática desde fuente oficial. | — |
 | D2 | Comisión en cancelaciones con cobro parcial: **supuesto** $0. | — |
 | D3 | Endpoints del ciclo del viaje (unirse, aceptar, iniciar, finalizar, cancelar): no existen. Spec 012 o enmienda de 006. | US3–US5 no tienen dónde engancharse. |
 | D4 | URL estable para el webhook (el *quick tunnel* cambia al reiniciar). | Sin avisos asíncronos de Stripe. |

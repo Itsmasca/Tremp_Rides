@@ -37,7 +37,7 @@ obligatorias verificadas) · `Descartado`.
 
 - **Proteger rutas con `JwtAuthGuard` (spec 009):** 002, 005, 006 y 008 siguen aceptando el `id` del path o de una cabecera.
 - **Enmienda del principio 8** para la retención de geometrías de viajes (solicitada por 006).
-- **Datos del seed vs #4:** gasolina Magna $24 y reparto igualitario; #4 define Premium $27.39 y 70/30.
+- **Datos del seed vs #4:** la gasolina ya es Premium $27.39 (2026-10-24, D1 de 011); el viaje demo del seed sigue con reparto igualitario en vez de 70/30.
 - **Tests automatizados:** ninguna spec los tiene todavía.
 
 ## Plantilla
