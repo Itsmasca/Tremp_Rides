@@ -96,6 +96,14 @@ export const configuration = () => {
       batchSize: int(process.env.OUTBOX_BATCH_SIZE, 100),
       maxAttempts: int(process.env.OUTBOX_MAX_ATTEMPTS, 10),
     },
+    /** Pagos con Stripe (spec 011). Sin STRIPE_ENABLED los endpoints de tarjeta responden 503. */
+    payments: {
+      stripeEnabled: bool(process.env.STRIPE_ENABLED),
+      stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? '',
+      stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY ?? '',
+      comisionMxn: num(process.env.PAGO_COMISION_MXN, 10),
+      repartoPasajero: num(process.env.PAGO_REPARTO_PASAJERO, 0.7),
+    },
     /** matching-py (`POST /match`, spec 010). Red interna, sin auth. */
     matching: {
       url: process.env.MATCHING_URL ?? 'http://localhost:8000',

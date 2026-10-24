@@ -26,6 +26,7 @@ services:
       - ./db/003_vehiculo_catalogo.sql:/docker-entrypoint-initdb.d/03-migracion-003.sql:ro
       - ./db/004_trips_geo_outbox.sql:/docker-entrypoint-initdb.d/04-migracion-004.sql:ro
       - ./db/005_matching_views.sql:/docker-entrypoint-initdb.d/05-migracion-005.sql:ro
+      - ./db/006_pagos_stripe.sql:/docker-entrypoint-initdb.d/06-migracion-006.sql:ro
       - ./db/seed.sql:/docker-entrypoint-initdb.d/09-seed.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]

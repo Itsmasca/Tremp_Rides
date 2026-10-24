@@ -8,6 +8,7 @@ import { EventBridgeModule } from './eventbridge/eventbridge.module';
 import { EventsModule } from './events/events.module';
 import { HealthController } from './health/health.controller';
 import { LocationModule } from './location/location.module';
+import { PaymentsModule } from './payments/payments.module';
 import { PreferencesModule } from './preferences/preferences.module';
 import { RedisModule } from './redis/redis.module';
 import { RidesModule } from './rides/rides.module';
@@ -25,6 +26,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     AuthModule,
     RidesModule,
+    PaymentsModule,
     ConditionalModule.registerWhen(EventBridgeModule, (env) => bool(env.EVENTBRIDGE_ENABLED)),
   ],
   controllers: [HealthController],

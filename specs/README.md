@@ -15,8 +15,9 @@ para evitar colisiones. Reglas en `constitution.md`.
 | 008 | [Preferencias de viaje](008-preferencias/spec.md) | Implementado* | #8 | spec · tasks | *Spec retroactiva. Bug `solo_F` → `500` corregido; quedan T8 (espacios) y T9 (Redis caído). |
 | 009 | [Autenticación](009-auth/spec.md) | Implementado | #10 | spec | Login, registro con token, `/auth/me`. `JwtAuthGuard` aún no se aplica a otras rutas. |
 | 010 | [Búsqueda con matching-py](010-busqueda-matching/spec.md) | En desarrollo | #3 | spec · plan · tasks | `POST /rides/search` → matching-py `/match`. Vistas `rides`/`matches`/`user_preferences` para matching-py. T1–T8 hechas; T9 espera `POST /match` en matching-py. |
+| 011 | [Pagos con Stripe](011-pagos-stripe/spec.md) | En desarrollo | #4 | spec | Cotización (#4 + comisión $10), guardar tarjeta (Stripe), migración 006 hechas. Retención/cobro esperan el ciclo del viaje (D3). |
 
-**Siguiente número libre: 011.**
+**Siguiente número libre: 012.**
 
 ## Estados
 
@@ -29,7 +30,7 @@ obligatorias verificadas) · `Descartado`.
 |---|---|---|
 | #1 | Estructura de la base de datos | Cubierto por `db/schema.sql` + 005 + 007; se puede cerrar. |
 | #3 | Modelos para análisis de rutas | matching-py / Bedrock (otro repo). |
-| #4 | Recuperación del conductor (precio 70/30) | Detallado en el comentario del issue. Catálogo de vehículos ya en 005; falta la spec de precios. |
+| #4 | Recuperación del conductor (precio 70/30) | Cobro y cancelaciones en 011; falta el ciclo del viaje (aceptar/iniciar/finalizar/cancelar). |
 | #9 | Vistas por tipo de usuario | Parcialmente en 004. |
 
 ## Pendientes transversales
