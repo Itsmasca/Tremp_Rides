@@ -24,7 +24,7 @@ type Props = {
 export default function MapBackground({ pins, selectedId, onSelect, driver }: Props) {
   const frameRef = useRef<MapFrameHandle>(null);
   const [ready, setReady] = useState(false);
-  const { coords: me } = useUserLocation();
+  const { coords: me, outOfArea } = useUserLocation();
   const centeredOnce = useRef(false);
 
   const run = (js: string) => frameRef.current?.run(js);
@@ -87,6 +87,13 @@ export default function MapBackground({ pins, selectedId, onSelect, driver }: Pr
         <Ionicons name="locate" size={22} color={Colors.text} />
       </TouchableOpacity>
 
+      {outOfArea && (
+        <View style={styles.areaNotice}>
+          <Ionicons name="alert-circle-outline" size={16} color={Colors.textSecondary} />
+          <Text style={styles.areaText}>Tu ubicación está fuera de Mérida. Mostramos la zona de la Anáhuac.</Text>
+        </View>
+      )}
+
       <Text style={styles.attribution}>© OpenFreeMap © OpenStreetMap</Text>
     </View>
   );
@@ -105,6 +112,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...Shadow,
   },
+  areaNotice: {
+    position: 'absolute',
+    top: 110,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+  },
+  areaText: { flex: 1, fontSize: 12, color: Colors.textSecondary, fontWeight: '600' },
   attribution: {
     position: 'absolute',
     left: 8,
