@@ -86,15 +86,25 @@ La app móvil (`mobile/`) no va en la VM: solo necesita la URL pública del back
 
 - **Red:** el security group solo abre el 22 (SSH) desde la IP del dueño; `ufw` solo permite el 22. La API se
   publica en `127.0.0.1:3001`; delante, un Nginx (`tremp-proxy`) en `127.0.0.1:3000` registra cada petición, y el
-  túnel de Cloudflare expone ese puerto (conexión de salida, sin puertos abiertos). Postgres y Redis no publican
-  puertos.
-- **Rol de la VM:** lectura de ECR, `events:PutEvents` (política del stack de EventBridge) y, mientras no lo haga
-  GitHub Actions, subida a ECR solo del repositorio `tremp-api`. El hop limit del token IMDS es 2 para que el
-  contenedor reciba las credenciales del rol.
-- **Imagen:** `docker build` con el `Dockerfile` de la raíz, subida a un repositorio ECR `tremp-api`.
+  túnel de Cloudflare expone ese puerto (conexión de salida, sin puertos abiertos).
+- **Bases administradas** (misma VPC que la VM, sin acceso público; sus security groups solo aceptan a la VM):
+  - Postgres 18 en RDS `trempapp-db` (`db.t4g.micro`, 20 GB gp3 cifrado, respaldo automático de 1 día por el plan
+    gratuito). `.env`: `DB_HOST=<endpoint de RDS>`, `PGSSLMODE=no-verify` (RDS exige SSL; `pg` lo lee solo).
+  - Valkey en ElastiCache `trempapp-cache` (`cache.t4g.micro`, TLS + auth token). `.env`: `REDIS_HOST=<endpoint>`,
+    `REDIS_PASSWORD=<auth token>`, `REDIS_TLS=true`.
+  - Los contenedores `postgres` y `redis` de la VM quedaron detenidos (volúmenes `pg-data` y `redis-data`
+    conservados) como plan B: para volver a ellos, `docker start postgres redis` y regresar los hosts del `.env`.
+- **Respaldos de Postgres:** `tremp-backup.timer` (diario, 09:00 UTC) hace `pg_dump` de RDS a `/var/backups/trempapp`
+  (últimos 7) y a `s3://trempapp-backups-196582131532/postgres/` (privado, cifrado, se borran a los 14 días).
+  Restaurar: `gunzip -c <archivo> | tremp-psql`.
+- **Consultar la base:** en la VM, `tremp-psql` (abre psql con los datos del `.env`). Desde la Mac con un cliente
+  gráfico: `ssh -i ~/.ssh/aws-hack.pem -N -L 5433:<endpoint de RDS>:5432 ubuntu@<IP de la VM>` y conectar a
+  `localhost:5433` (usuario `trempapp`, base `trempapp`, SSL requerido).
+- **Rol de la VM:** lectura de ECR, `events:PutEvents` (política del stack de EventBridge), escribir en sus log groups
+  y métricas `Trempapp`, y subir respaldos a S3. El hop limit del token IMDS es 2 para que el contenedor reciba las
+  credenciales del rol.
+- **Imagen:** la construye GitHub Actions y la sube a ECR `tremp-api` (ver abajo).
 - **`.env`:** se crea en la VM a partir de `.env.example` (`chmod 600`, ya está en `.gitignore`); nunca se sube.
-  Con la base y Redis en contenedores: `DB_HOST=postgres`, `REDIS_HOST=redis`, contraseñas propias.
-  Con servicios externos (RDS, ElastiCache) se cambian los hosts, y la VM debe tener ruta de red hacia ellos.
 
 ```bash
 # En la VM
