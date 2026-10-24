@@ -26,6 +26,7 @@ src/
 ├── store/user.ts        # Estado global del usuario (rol, preferencias)
 ├── constants/theme.ts   # Paleta de colores, radios y sombras
 ├── constants/pricing.ts # Fórmula de precio (rendimiento, gasolina, 70/30)
+├── hooks/useUserLocation.ts # Permiso y posición del usuario (expo-location)
 └── data/rides.ts        # Datos de prueba (mock)
 ```
 
