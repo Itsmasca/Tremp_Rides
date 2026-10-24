@@ -6,6 +6,7 @@ import { DatabaseModule } from './database/database.module';
 import { EventBridgeModule } from './eventbridge/eventbridge.module';
 import { EventsModule } from './events/events.module';
 import { HealthController } from './health/health.controller';
+import { LocationModule } from './location/location.module';
 import { RedisModule } from './redis/redis.module';
 
 @Module({
@@ -15,6 +16,7 @@ import { RedisModule } from './redis/redis.module';
     DatabaseModule,
     EventsModule,
     CacheModule,
+    LocationModule,
     ConditionalModule.registerWhen(EventBridgeModule, (env) => bool(env.EVENTBRIDGE_ENABLED)),
   ],
   controllers: [HealthController],

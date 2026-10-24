@@ -32,6 +32,10 @@ export const configuration = () => {
       poolMax: int(process.env.DB_POOL_MAX, 10),
       idleTimeoutMs: int(process.env.DB_IDLE_TIMEOUT_MS, 30_000),
     },
+    location: {
+      // La ubicación nunca se persiste en PostgreSQL: vive solo en Redis con TTL.
+      ttlSeconds: int(process.env.LOCATION_TTL_SEGUNDOS, 1800),
+    },
     events: {
       stream,
       deadLetterStream: `${stream}:dlq`,
