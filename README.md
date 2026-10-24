@@ -83,8 +83,9 @@ El backend se despliega como contenedor en una VM EC2 (Ubuntu 24.04, `t3.small`,
 La app móvil (`mobile/`) no va en la VM: solo necesita la URL pública del backend.
 
 - **Red:** el security group solo abre el 22 (SSH) desde la IP del dueño; `ufw` solo permite el 22. La API se
-  publica en `127.0.0.1:3000` y se expone con un túnel de Cloudflare (conexión de salida, sin puertos abiertos).
-  Postgres y Redis no publican puertos.
+  publica en `127.0.0.1:3001`; delante, un Nginx (`tremp-proxy`) en `127.0.0.1:3000` registra cada petición, y el
+  túnel de Cloudflare expone ese puerto (conexión de salida, sin puertos abiertos). Postgres y Redis no publican
+  puertos.
 - **Rol de la VM:** lectura de ECR, `events:PutEvents` (política del stack de EventBridge) y, mientras no lo haga
   GitHub Actions, subida a ECR solo del repositorio `tremp-api`. El hop limit del token IMDS es 2 para que el
   contenedor reciba las credenciales del rol.
@@ -154,16 +155,21 @@ sudo /usr/local/bin/tremp-deploy latest
 (7 días, un stream por contenedor) y `docker logs` sigue funcionando en la VM. El rol de la VM solo puede escribir en
 ese log group y publicar métricas en el namespace `Trempapp`.
 
+- Peticiones: `tremp-proxy` (Nginx, config en `/etc/tremp/nginx.conf` de la VM) escribe una línea JSON por petición
+  (`method`, `path` sin query string, `status`, `rt` en segundos, `bytes`; sin IP ni bodies) en `/trempapp/requests`
+  (7 días). Metric filters: `Requests` (sin `/health`), `Requests4xx`, `Requests5xx`, `RequestLatency`.
 - `tremp-health.timer` (systemd, cada minuto) publica `Trempapp/ApiUp` = 1 si `/health` responde, 0 si no.
 - Un metric filter cuenta las líneas `ERROR` del log group como `Trempapp/ApiErrors`.
-- Alarmas: `trempapp-api-caida` (ApiUp < 1 durante 3 min o sin datos), `trempapp-api-errores` (≥ 5 errores en
-  5 min) y `trempapp-vm-status` (status check de EC2). Avisan por correo (al activarse y al volver a OK) por el
-  tema SNS `trempapp-alertas`.
-- Dashboard `trempapp` en CloudWatch: alarmas, salud, errores, CPU de la VM, eventos del bus y logs recientes.
+- Alarmas: `trempapp-api-caida` (ApiUp < 1 durante 3 min o sin datos), `trempapp-api-5xx` (≥ 5 respuestas 5xx en
+  5 min), `trempapp-api-errores` (≥ 5 errores en 5 min) y `trempapp-vm-status` (status check de EC2). Avisan por
+  correo (al activarse y al volver a OK) por el tema SNS `trempapp-alertas`.
+- Dashboard `trempapp` en CloudWatch: alarmas, peticiones por minuto, errores 4xx/5xx, tiempo de respuesta p50/p95,
+  rutas más usadas, últimas peticiones, salud, CPU de la VM, eventos del bus y logs de la API.
 - Decisión: el monitoreo es solo CloudWatch, sin OpenTelemetry.
 
 ```bash
 aws logs tail /trempapp/api --follow
+aws logs tail /trempapp/requests --follow
 ```
 
 Pendiente: autenticación en los endpoints (hoy todos responden sin login) y el servicio `matching-py`.

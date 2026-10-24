@@ -6,8 +6,16 @@ import { REDIS, REDIS_SUB } from './redis.constants';
 import { RedisService } from './redis.service';
 
 const createClient = (config: ConfigService<AppConfig, true>, name: string) => {
-  const { host, port, password, db } = config.get('redis', { infer: true });
-  return new Redis({ host, port, password, db, connectionName: name, enableAutoPipelining: true });
+  const { host, port, password, db, tls } = config.get('redis', { infer: true });
+  return new Redis({
+    host,
+    port,
+    password,
+    db,
+    tls: tls ? {} : undefined,
+    connectionName: name,
+    enableAutoPipelining: true,
+  });
 };
 
 @Global()

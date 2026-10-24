@@ -25,6 +25,7 @@ export const configuration = () => {
       port: int(process.env.REDIS_PORT, 6379),
       password: process.env.REDIS_PASSWORD || undefined,
       db: int(process.env.REDIS_DB, 0),
+      tls: bool(process.env.REDIS_TLS), // ElastiCache con cifrado en tránsito
       prefix,
     },
     database: {
