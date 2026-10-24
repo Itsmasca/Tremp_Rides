@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-eventbridge": "^3.1156.0",
     "@nestjs/common": "^12.2.0",
     "@nestjs/config": "^12.0.1",
     "@nestjs/core": "^12.2.0",
@@ -16,6 +17,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "ioredis": "^6.0.0",
+    "pg": "^8.23.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2"
   },
@@ -25,6 +27,7 @@
     "@swc/cli": "^0.8.1",
     "@swc/core": "^1.16.20",
     "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
     "typescript": "~6.0"
   }
 }

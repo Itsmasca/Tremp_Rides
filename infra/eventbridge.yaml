@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Trempapp - bus de EventBridge para eventos de negocio (spec 003)
+
+Parameters:
+  BusName:
+    Type: String
+    Default: trempapp
+    Description: Debe coincidir con EVENTBRIDGE_BUS
+  Source:
+    Type: String
+    Default: trempapp.backend
+    Description: Debe coincidir con EVENTBRIDGE_SOURCE
+  ArchiveRetentionDays:
+    Type: Number
+    Default: 14
+    MinValue: 0
+    Description: 0 = indefinido
+
+Resources:
+  EventBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Ref BusName
+
+  # Permite hacer replay de eventos si un target en AWS falla.
+  Archive:
+    Type: AWS::Events::Archive
+    Properties:
+      ArchiveName: !Sub '${BusName}-archive'
+      SourceArn: !GetAtt EventBus.Arn
+      RetentionDays: !Ref ArchiveRetentionDays
+      EventPattern:
+        source: [!Ref Source]
+
+  # Adjuntar al rol del backend (tarea ECS, instancia EC2, etc.).
+  PublisherPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub '${BusName}-eventbridge-publisher'
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action: events:PutEvents
+            Resource: !GetAtt EventBus.Arn
+            Condition:
+              StringEquals:
+                events:source: !Ref Source
+
+Outputs:
+  EventBusName:
+    Value: !Ref EventBus
+  EventBusArn:
+    Value: !GetAtt EventBus.Arn
+  PublisherPolicyArn:
+    Value: !Ref PublisherPolicy
