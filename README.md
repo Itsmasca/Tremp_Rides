@@ -7,7 +7,7 @@
 **Carpool universitario sin fines de lucro, exclusivo para la comunidad Anáhuac Mayab.**
 Quien tiene auto comparte un trayecto que de todos modos iba a hacer; quien no tiene, llega a clases pagando solo su parte de la gasolina.
 
-![Estado](https://img.shields.io/badge/estado-prototipo%20hackathon-06B6D4)
+![Movilidad](https://img.shields.io/badge/rebranding%20tecnol%C3%B3gico-movilidad%20y%20networking-06B6D4)
 ![Comunidad](https://img.shields.io/badge/acceso-%40anahuac.mx-0369A1)
 ![Modelo](https://img.shields.io/badge/modelo-sin%20fines%20de%20lucro-22C55E)
 ![App](https://img.shields.io/badge/app-Expo%20%2F%20React%20Native-000020?logo=expo)
