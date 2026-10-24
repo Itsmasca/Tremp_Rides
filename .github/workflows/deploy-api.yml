@@ -1,0 +1,54 @@
+name: Deploy API
+
+# Push a main (cambios del backend) -> imagen a ECR -> la VM la descarga por SSM.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['mobile/**', 'specs/**', '**.md']
+  workflow_dispatch:
+
+permissions:
+  id-token: write   # OIDC hacia AWS, sin keys guardadas en GitHub
+  contents: read
+
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  REGISTRY: 196582131532.dkr.ecr.us-east-1.amazonaws.com
+  INSTANCE_ID: i-0282e002e272d0ca1
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5.0.0
+
+      - uses: aws-actions/configure-aws-credentials@v5.0.0
+        with:
+          role-to-assume: arn:aws:iam::196582131532:role/tremp-github-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build y push a ECR
+        run: |
+          aws ecr get-login-password | docker login --username AWS --password-stdin "$REGISTRY"
+          docker build -t "$REGISTRY/tremp-api:$GITHUB_SHA" -t "$REGISTRY/tremp-api:latest" .
+          docker push "$REGISTRY/tremp-api:$GITHUB_SHA"
+          docker push "$REGISTRY/tremp-api:latest"
+
+      - name: Deploy en la VM (SSM)
+        run: |
+          CID=$(aws ssm send-command --instance-ids "$INSTANCE_ID" --document-name AWS-RunShellScript \
+            --comment "deploy $GITHUB_SHA" --parameters "commands=[\"/usr/local/bin/tremp-deploy $GITHUB_SHA\"]" \
+            --query Command.CommandId --output text)
+          for i in $(seq 1 60); do
+            STATUS=$(aws ssm get-command-invocation --command-id "$CID" --instance-id "$INSTANCE_ID" \
+              --query Status --output text 2>/dev/null || echo Pending)
+            case "$STATUS" in Pending|InProgress|Delayed) sleep 5 ;; *) break ;; esac
+          done
+          aws ssm get-command-invocation --command-id "$CID" --instance-id "$INSTANCE_ID" \
+            --query '[StandardOutputContent,StandardErrorContent]' --output text
+          echo "Estado: $STATUS"
+          test "$STATUS" = Success
