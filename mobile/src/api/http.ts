@@ -16,14 +16,15 @@ type Options = {
   token?: string | null;
 };
 
-// NestJS devuelve { message: string | string[] } en los errores de validación
-function extractMessage(data: any, status: number): string {
-  const m = data?.message;
-  if (Array.isArray(m)) return m.join('\n');
-  if (typeof m === 'string' && m.trim()) return m;
+// Mensajes que ve el usuario. Nunca mostramos el texto crudo del servidor
+// (por ejemplo "Cannot POST /auth/login" o mensajes de validación en inglés).
+function friendlyMessage(status: number): string {
+  if (status === 400) return 'Revisa los datos e intenta de nuevo';
   if (status === 401) return 'Correo o contraseña incorrectos';
   if (status === 409) return 'Ese correo ya está registrado';
-  return `Error del servidor (${status})`;
+  if (status === 404) return 'El servicio no está disponible por ahora. Intenta más tarde.';
+  if (status === 429) return 'Demasiados intentos. Espera un momento e intenta de nuevo.';
+  return 'Hubo un problema con el servidor. Intenta de nuevo en un momento.';
 }
 
 export async function request<T>(path: string, { method = 'GET', body, token }: Options = {}): Promise<T> {
@@ -55,15 +56,17 @@ export async function request<T>(path: string, { method = 'GET', body, token }: 
   }
 
   const text = await res.text();
-  let data: any = null;
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = { message: text };
-    }
+
+  if (!res.ok) {
+    // El detalle técnico queda en la consola para depurar, no en pantalla
+    console.warn(`[api] ${method} ${path} -> ${res.status}`, text.slice(0, 300));
+    throw new ApiError(res.status, friendlyMessage(res.status));
   }
 
-  if (!res.ok) throw new ApiError(res.status, extractMessage(data, res.status));
-  return data as T;
+  if (!text) return null as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new ApiError(res.status, friendlyMessage(500));
+  }
 }
