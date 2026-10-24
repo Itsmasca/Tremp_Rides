@@ -12,8 +12,8 @@ INSERT INTO users (nombre, correo, password_hash, sexo, tipo_usuario, verificado
     ('Demo Tres', 'demo3@anahuac.mx', '$2b$12$demohashdemohashdemoha', 'F', 'pasajero',  TRUE, 'solo_F');
 
 -- Coche de Ana (conductora)
-INSERT INTO vehicles (user_id, marca, modelo, capacidad, rendimiento_km_l)
-SELECT id, 'Nissan', 'Versa', 4, 14.50
+INSERT INTO vehicles (user_id, marca, modelo, capacidad, categoria)
+SELECT id, 'Nissan', 'Versa', 4, 'sedan'
 FROM users WHERE correo = 'demo1@anahuac.mx';
 
 -- Ejemplo de viaje de Ana: 20 km

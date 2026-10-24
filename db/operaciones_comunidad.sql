@@ -19,15 +19,16 @@ WITH nuevo_conductor AS (
     VALUES ('Demo Conductor Dos', 'demo2@anahuac.mx', '$2b$12$hashgeneradoporbcrypt', 'M', 'conductor', FALSE, 'cualquiera')
     RETURNING id
 )
-INSERT INTO vehicles (user_id, marca, modelo, capacidad, rendimiento_km_l)
-SELECT id, 'MarcaDemo', 'ModeloDemo', 4, 15.00 FROM nuevo_conductor;
+INSERT INTO vehicles (user_id, marca, modelo, capacidad, categoria)
+SELECT id, 'MarcaDemo', 'ModeloDemo', 4, 'sedan' FROM nuevo_conductor;
 
 --  2. CONSULTA  (SELECT) - Gestionar / ver la comunidad
 
 -- 2.1 Listar todos los conductores disponibles (lado de la "oferta")
-SELECT u.nombre, u.correo, v.marca, v.modelo, v.capacidad, v.rendimiento_km_l
+SELECT u.nombre, u.correo, v.marca, v.modelo, v.capacidad, v.categoria, c.rendimiento_km_l
 FROM users u
 JOIN vehicles v ON v.user_id = u.id
+JOIN vehicle_catalogo c ON c.categoria = v.categoria
 WHERE u.tipo_usuario = 'conductor'
   AND u.verificado = TRUE
 ORDER BY u.nombre;
@@ -79,8 +80,8 @@ UPDATE users
 SET tipo_usuario = 'conductor'
 WHERE correo = 'demo1@anahuac.mx';
 
-INSERT INTO vehicles (user_id, marca, modelo, capacidad, rendimiento_km_l)
-SELECT id, 'MarcaDemo2', 'ModeloDemo2', 4, 13.50
+INSERT INTO vehicles (user_id, marca, modelo, capacidad, categoria)
+SELECT id, 'MarcaDemo2', 'ModeloDemo2', 4, 'suv'
 FROM users WHERE correo = 'demo1@anahuac.mx';
 
 --  4. BAJA  (DELETE) - Dar de baja a un miembro de la comunidad

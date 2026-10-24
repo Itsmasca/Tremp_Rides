@@ -20,7 +20,9 @@ services:
       - pg-data:/var/lib/postgresql/data
       # Solo se ejecutan la primera vez (volumen vacío), en orden alfabético.
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-      - ./db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+      - ./db/002_add_preferences_columns.sql:/docker-entrypoint-initdb.d/02-migracion-002.sql:ro
+      - ./db/003_vehiculo_catalogo.sql:/docker-entrypoint-initdb.d/03-migracion-003.sql:ro
+      - ./db/seed.sql:/docker-entrypoint-initdb.d/09-seed.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s

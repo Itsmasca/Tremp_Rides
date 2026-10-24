@@ -1,4 +1,4 @@
-# 002 · Plan técnico
+# 007 · Plan técnico
 
 ## Stack
 PostgreSQL 17 (alpine) · `pg` (node-postgres) 8.
@@ -16,8 +16,9 @@ PostgreSQL 17 (alpine) · `pg` (node-postgres) 8.
 
 ```
 db/
-  schema.sql                 # DDL (01 al iniciar)
-  seed.sql                   # datos demo (02 al iniciar)
+  schema.sql                 # DDL base (01 al iniciar)
+  NNN_*.sql                  # migraciones idempotentes (02, 03… en orden)
+  seed.sql                   # datos demo (09, al final)
   operaciones_comunidad.sql  # ejemplos manuales
 src/database/
   database.constants.ts      # PG_POOL

@@ -61,4 +61,4 @@ src/location/
   del token, no del path.
 - Historial o rastreo de posiciones (prohibido por la regla de privacidad).
 - Geocoding, cálculo de rutas y matching (algoritmo de Bedrock, de otro compañero).
-- Persistencia relacional de usuarios/viajes (ver `specs/002-postgres/`).
+- Persistencia relacional de usuarios/viajes (ver `specs/007-postgres/`).

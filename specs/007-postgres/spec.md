@@ -1,6 +1,6 @@
-# 002 · Integración PostgreSQL (`db/`)
+# 007 · Integración PostgreSQL (`db/`)
 
-**Estado:** Implementado · **Fecha:** 2026-10-24
+**Estado:** Implementado · **Fecha:** 2026-10-24 · **Issue:** #6 · *(antes `002-postgres`; renumerada por colisión)*
 
 ## Objetivo
 
@@ -10,8 +10,8 @@ en el entorno local y en el backend, como almacén de datos permanentes junto a 
 ## Historias de usuario
 
 ### US1 · Base de datos local reproducible
-- **AC1.1** `docker compose up -d postgres` levanta PostgreSQL 17 con `db/schema.sql` y `db/seed.sql`
-  aplicados automáticamente la primera vez (volumen vacío).
+- **AC1.1** `docker compose up -d postgres` levanta PostgreSQL 17 aplicando automáticamente la primera vez
+  (volumen vacío), en orden: `db/schema.sql`, las migraciones `db/NNN_*.sql` y `db/seed.sql`.
 - **AC1.2** Los datos persisten en el volumen `pg-data`; `docker compose down -v` reinicia la BD desde cero.
 - **AC1.3** `db/operaciones_comunidad.sql` **no** se ejecuta al iniciar: son consultas de ejemplo
   (incluye `DELETE`) para ejecutar a mano.

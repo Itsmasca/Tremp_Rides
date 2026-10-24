@@ -1,6 +1,6 @@
 # 004 · App móvil Tremp (Expo)
 
-**Estado:** en desarrollo (hackathon) · **Carpeta:** `mobile/`
+**Estado:** En desarrollo (hackathon) · **Carpeta:** `mobile/`
 
 ## Objetivo
 

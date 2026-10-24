@@ -7,7 +7,9 @@ import { EventBridgeModule } from './eventbridge/eventbridge.module';
 import { EventsModule } from './events/events.module';
 import { HealthController } from './health/health.controller';
 import { LocationModule } from './location/location.module';
+import { PreferencesModule } from './preferences/preferences.module';
 import { RedisModule } from './redis/redis.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -17,6 +19,8 @@ import { RedisModule } from './redis/redis.module';
     EventsModule,
     CacheModule,
     LocationModule,
+    PreferencesModule,
+    UsersModule,
     ConditionalModule.registerWhen(EventBridgeModule, (env) => bool(env.EVENTBRIDGE_ENABLED)),
   ],
   controllers: [HealthController],

@@ -1,7 +1,7 @@
 # Trempapp backend
 
 NestJS + Fastify + PostgreSQL (datos permanentes) + Redis (caché, Streams para eventos, Pub/Sub para SSE) + Amazon EventBridge (opcional). Desarrollado con
-**Spec-Driven Development**: lee `specs/constitution.md` y `specs/` antes de cambiar nada.
+**Spec-Driven Development**: lee `specs/constitution.md` y el índice `specs/README.md` antes de cambiar nada.
 
 ## Arranque
 
@@ -21,6 +21,10 @@ npm run start:dev          # o: npm run build && npm start
 | GET | `/events/dlq?count=50` | Dead letters |
 | GET | `/events/stream?types=a,b` | SSE en tiempo real |
 | PUT/GET/DELETE | `/cache/:key` | Caché JSON con `ttl` opcional (segundos) |
+| POST | `/users` | Registro `{ nombre, correo, password, sexo, prefSexoViaje?, vehiculo? }` → `201` |
+| GET | `/users?tipo=&verificado=&limit=&after=` | Lista paginada → `{ items, nextCursor }` |
+| GET/PATCH/DELETE | `/users/:id` | Consulta, cambia `nombre`/`fotoUrl`, baja en cascada |
+| PUT/DELETE | `/users/:id/vehicle` | Vehículo del catálogo `{ categoria, capacidad, marca?, modelo? }` → conductor / pasajero |
 | GET | `/health` | Estado y latencia de Redis y PostgreSQL |
 
 ## Base de datos
