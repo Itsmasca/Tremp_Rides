@@ -12,20 +12,34 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { login } from '@/api/auth';
+import ErrorText from '@/components/ErrorText';
 import PrimaryButton from '@/components/PrimaryButton';
 import TextField from '@/components/TextField';
 import { Colors, Radius, Shadow } from '@/constants/theme';
-import { setUser } from '@/store/user';
+import { emailError, passwordError } from '@/utils/validation';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    // TODO: validar contra backend. Mientras tanto, el rol lo decide el registro;
-    // para probar sin registrarte, un correo que contenga "conductor" entra como conductor.
-    if (email.toLowerCase().includes('conductor')) setUser({ role: 'conductor', hasVehicle: true });
-    router.replace('/home' as any);
+  const handleLogin = async () => {
+    const invalid = emailError(email) ?? passwordError(password);
+    if (invalid) return setError(invalid);
+
+    setError(null);
+    setLoading(true);
+    try {
+      // El backend devuelve { token, user }; el rol (conductor/pasajero) viene del registro
+      await login(email.trim().toLowerCase(), password);
+      router.replace('/home' as any);
+    } catch (e: any) {
+      setError(e?.message ?? 'No se pudo iniciar sesión');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -46,7 +60,10 @@ export default function LoginScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(t) => {
+                setEmail(t);
+                setError(null);
+              }}
             />
             <TextField
               label="Contraseña"
@@ -54,9 +71,13 @@ export default function LoginScreen() {
               placeholder="••••••••"
               secureTextEntry
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(t) => {
+                setPassword(t);
+                setError(null);
+              }}
             />
-            <PrimaryButton title="Entrar" onPress={handleLogin} style={{ marginTop: 8 }} />
+            <ErrorText message={error} />
+            <PrimaryButton title="Entrar" onPress={handleLogin} loading={loading} style={{ marginTop: 8 }} />
           </View>
 
           <TouchableOpacity onPress={() => router.push('/register' as any)} style={styles.linkRow}>

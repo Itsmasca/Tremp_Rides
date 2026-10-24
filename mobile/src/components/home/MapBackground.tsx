@@ -15,8 +15,11 @@ type Props = {
   onSelect?: (id: string) => void;
 };
 
-// Mosaicos de OpenStreetMap. Gratis y sin API key; requiere mostrar la atribución.
-const OSM_TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+// Mosaicos con datos de OpenStreetMap servidos por CARTO (estilo Voyager).
+// Los servidores de OSM bloquean a las apps que les piden tiles directamente
+// (error 403 "Access blocked", ver osm.wiki/Blocked); CARTO sí lo permite sin
+// API key mientras se muestre la atribución.
+const MAP_TILES = 'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
 
 // Mapa a pantalla completa detrás del panel (estilo Uber/DiDi)
 export default function MapBackground({ pins, selectedId, onSelect }: Props) {
@@ -49,7 +52,7 @@ export default function MapBackground({ pins, selectedId, onSelect }: Props) {
         showsCompass={false}
         toolbarEnabled={false}
         rotateEnabled={false}>
-        <UrlTile urlTemplate={OSM_TILES} maximumZ={19} shouldReplaceMapContent />
+        <UrlTile urlTemplate={MAP_TILES} maximumZ={19} shouldReplaceMapContent />
 
         <Marker coordinate={ANAHUAC} title="Anáhuac Mayab" anchor={{ x: 0.5, y: 0.5 }}>
           <View style={styles.schoolPin}>
@@ -80,7 +83,7 @@ export default function MapBackground({ pins, selectedId, onSelect }: Props) {
         <Ionicons name="locate" size={22} color={Colors.text} />
       </TouchableOpacity>
 
-      <Text style={styles.attribution}>© OpenStreetMap contributors</Text>
+      <Text style={styles.attribution}>© OpenStreetMap contributors © CARTO</Text>
     </View>
   );
 }

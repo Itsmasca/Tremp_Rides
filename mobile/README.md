@@ -12,6 +12,12 @@ npx expo start
 Escanea el QR con **Expo Go** en tu celular (misma red WiFi), o presiona `w` para abrir en el navegador.
 Si algo se traba: `npx expo start -c` (limpia la caché).
 
+## Conectar con el backend
+
+Login y registro llaman a `POST /auth/login` y `POST /auth/register` del backend (NestJS, en la raíz del repo).
+La URL base está en `src/constants/api.ts`; para cambiarla sin tocar código (el túnel de Cloudflare cambia
+cada vez que se levanta) copia `.env.example` a `.env`, ajusta `EXPO_PUBLIC_API_URL` y reinicia con `npx expo start -c`.
+
 ## Estructura
 
 ```
@@ -21,9 +27,12 @@ src/
 │   ├── index.tsx        # Login
 │   ├── register.tsx     # Registro dinámico
 │   └── home.tsx         # Dashboard de rides
-├── components/          # PrimaryButton, TextField, PillSelector
+├── api/                 # Cliente HTTP (http.ts) y llamadas de autenticación (auth.ts)
+├── components/          # PrimaryButton, TextField, PillSelector, ErrorText
 │   └── home/            # Mapa, panel inferior, vista pasajero y vista conductor
-├── store/user.ts        # Estado global del usuario (rol, preferencias)
+├── store/user.ts        # Estado global del usuario (sesión, rol, preferencias)
+├── utils/validation.ts  # Reglas de correo @anahuac.mx y contraseña
+├── constants/api.ts     # URL del backend (EXPO_PUBLIC_API_URL)
 ├── constants/theme.ts   # Paleta de colores, radios y sombras
 ├── constants/pricing.ts # Fórmula de precio (rendimiento, gasolina, 70/30)
 ├── hooks/useUserLocation.ts # Permiso y posición del usuario (expo-location)
