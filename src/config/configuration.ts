@@ -16,6 +16,10 @@ export const configuration = () => {
 
   return {
     port: int(process.env.PORT, 3000),
+    auth: {
+      jwtSecret: process.env.JWT_SECRET ?? 'cambia-esto-en-produccion',
+      jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '30d',
+    },
     redis: {
       host: process.env.REDIS_HOST ?? 'localhost',
       port: int(process.env.REDIS_PORT, 6379),
