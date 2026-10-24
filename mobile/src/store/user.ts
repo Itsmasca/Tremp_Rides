@@ -7,7 +7,10 @@ import { RideTime } from '@/data/rides';
 export type Role = 'pasajero' | 'conductor';
 
 export type User = {
+  id: string | null; // id en el backend; null si no hay sesión
+  token: string | null; // JWT para las peticiones protegidas
   name: string;
+  email: string;
   gender: 'hombre' | 'mujer' | null;
   womenOnly: boolean;
   hasVehicle: boolean;
@@ -17,8 +20,11 @@ export type User = {
   time: RideTime | null; // horario habitual para ir a la Anáhuac
 };
 
-let user: User = {
+const EMPTY_USER: User = {
+  id: null,
+  token: null,
   name: 'Estudiante',
+  email: '',
   gender: null,
   womenOnly: false,
   hasVehicle: false,
@@ -28,10 +34,18 @@ let user: User = {
   time: null,
 };
 
+let user: User = EMPTY_USER;
+
 const listeners = new Set<() => void>();
 
 export function setUser(partial: Partial<User>) {
   user = { ...user, ...partial };
+  listeners.forEach((l) => l());
+}
+
+// Cierra sesión: vuelve al estado inicial
+export function clearUser() {
+  user = EMPTY_USER;
   listeners.forEach((l) => l());
 }
 

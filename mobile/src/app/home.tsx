@@ -6,7 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import DriverView from '@/components/home/DriverView';
 import PassengerView from '@/components/home/PassengerView';
 import { Colors, Radius, Shadow } from '@/constants/theme';
-import { useUser } from '@/store/user';
+import { clearUser, useUser } from '@/store/user';
 
 // El rol viene del registro: con coche = conductor, sin coche = pasajero
 export default function HomeScreen() {
@@ -19,7 +19,10 @@ export default function HomeScreen() {
 
       {/* Barra superior flotante sobre el mapa */}
       <SafeAreaView edges={['top']} style={styles.topBar} pointerEvents="box-none">
-        <TouchableOpacity style={styles.circle} onPress={() => router.replace('/' as any)}>
+        <TouchableOpacity style={styles.circle} onPress={() => {
+            clearUser();
+            router.replace('/' as any);
+          }}>
           <Ionicons name="log-out-outline" size={22} color={Colors.text} />
         </TouchableOpacity>
         <View style={styles.badge}>

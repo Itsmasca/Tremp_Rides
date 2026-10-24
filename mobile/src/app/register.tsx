@@ -12,11 +12,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CATEGORY_TO_API, register } from '@/api/auth';
+import ErrorText from '@/components/ErrorText';
 import PillSelector from '@/components/PillSelector';
 import PrimaryButton from '@/components/PrimaryButton';
 import TextField from '@/components/TextField';
 import { Colors, Radius, Shadow } from '@/constants/theme';
-import { setUser } from '@/store/user';
+import { emailError, passwordError } from '@/utils/validation';
+
+// Lugares para pasajeros con los que se da de alta el vehículo (el conductor
+// elige cuántos ofrece en cada viaje desde el Home, máximo 3)
+const DEFAULT_SEATS = 3;
 
 type Gender = 'hombre' | 'mujer';
 type YesNo = 'si' | 'no';
@@ -30,18 +36,45 @@ export default function RegisterScreen() {
   const [womenOnly, setWomenOnly] = useState<YesNo | null>(null);
   const [hasVehicle, setHasVehicle] = useState<YesNo | null>(null);
   const [vehicleType, setVehicleType] = useState<VehicleType | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleRegister = () => {
-    // TODO: enviar al backend
-    setUser({
-      name: name || 'Estudiante',
-      gender,
-      womenOnly: womenOnly === 'si',
-      hasVehicle: hasVehicle === 'si',
-      vehicleType,
-      role: hasVehicle === 'si' ? 'conductor' : 'pasajero',
-    });
-    router.replace('/home' as any);
+  const validate = (): string | null => {
+    if (!name.trim()) return 'Escribe tu nombre completo';
+    const e = emailError(email) ?? passwordError(password, true);
+    if (e) return e;
+    if (!gender) return 'Selecciona tu género';
+    if (gender === 'mujer' && !womenOnly) return 'Indica si quieres ver solo viajes de conductoras';
+    if (!hasVehicle) return 'Indica si tienes vehículo';
+    if (hasVehicle === 'si' && !vehicleType) return 'Selecciona el tipo de vehículo';
+    return null;
+  };
+
+  const handleRegister = async () => {
+    const invalid = validate();
+    if (invalid) return setError(invalid);
+
+    setError(null);
+    setLoading(true);
+    try {
+      // POST /auth/register: con vehículo se crea como conductor, sin vehículo como pasajero
+      await register({
+        nombre: name.trim(),
+        correo: email.trim().toLowerCase(),
+        password,
+        sexo: gender === 'mujer' ? 'F' : 'M',
+        prefSexoViaje: gender === 'mujer' && womenOnly === 'si' ? 'solo_F' : 'cualquiera',
+        vehiculo:
+          hasVehicle === 'si' && vehicleType
+            ? { categoria: CATEGORY_TO_API[vehicleType], capacidad: DEFAULT_SEATS }
+            : undefined,
+      });
+      router.replace('/home' as any);
+    } catch (e: any) {
+      setError(e?.message ?? 'No se pudo crear la cuenta');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -143,7 +176,8 @@ export default function RegisterScreen() {
             )}
           </View>
 
-          <PrimaryButton title="Crear cuenta" onPress={handleRegister} style={{ marginTop: 8 }} />
+          <ErrorText message={error} />
+          <PrimaryButton title="Crear cuenta" onPress={handleRegister} loading={loading} style={{ marginTop: 8 }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

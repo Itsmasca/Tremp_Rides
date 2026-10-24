@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TouchableOpacity, ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, ViewStyle } from 'react-native';
 
 import { Colors, Radius, Shadow } from '@/constants/theme';
 
@@ -7,16 +7,24 @@ type Props = {
   onPress: () => void;
   variant?: 'solid' | 'outline';
   style?: ViewStyle;
+  loading?: boolean; // muestra spinner y bloquea el toque
+  disabled?: boolean;
 };
 
-export default function PrimaryButton({ title, onPress, variant = 'solid', style }: Props) {
+export default function PrimaryButton({ title, onPress, variant = 'solid', style, loading, disabled }: Props) {
   const outline = variant === 'outline';
+  const blocked = loading || disabled;
   return (
     <TouchableOpacity
       activeOpacity={0.8}
       onPress={onPress}
-      style={[styles.button, outline ? styles.outline : styles.solid, style]}>
-      <Text style={[styles.text, outline && { color: Colors.primary }]}>{title}</Text>
+      disabled={blocked}
+      style={[styles.button, outline ? styles.outline : styles.solid, blocked && { opacity: 0.6 }, style]}>
+      {loading ? (
+        <ActivityIndicator color={outline ? Colors.primary : '#FFFFFF'} />
+      ) : (
+        <Text style={[styles.text, outline && { color: Colors.primary }]}>{title}</Text>
+      )}
     </TouchableOpacity>
   );
 }
