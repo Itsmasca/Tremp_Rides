@@ -10,16 +10,17 @@ type Props = {
   pins: MapPin[];
   selectedId?: string | null;
   onSelect?: (id: string) => void;
+  driver?: { latitude: number; longitude: number } | null;
 };
 
-// react-native-maps no corre en web: dibujamos un mapa falso para previsualizar
+// En web (vista previa) dibujamos un mapa falso; en el celular se usa MapLibre + OpenFreeMap
 function toPercent(lat: number, lng: number) {
   const top = ((MERIDA_REGION.latitude + MERIDA_REGION.latitudeDelta / 2 - lat) / MERIDA_REGION.latitudeDelta) * 100;
   const left = ((lng - (MERIDA_REGION.longitude - MERIDA_REGION.longitudeDelta / 2)) / MERIDA_REGION.longitudeDelta) * 100;
   return { top: `${top}%`, left: `${left}%` } as any;
 }
 
-export default function MapBackground({ pins, selectedId, onSelect }: Props) {
+export default function MapBackground({ pins, selectedId, onSelect, driver }: Props) {
   return (
     <View style={[StyleSheet.absoluteFill, styles.map]}>
       {[15, 35, 55, 75].map((p) => (
@@ -39,6 +40,11 @@ export default function MapBackground({ pins, selectedId, onSelect }: Props) {
           <Ionicons name="location" size={p.id === selectedId ? 36 : 28} color={p.id === selectedId ? Colors.primaryDark : Colors.primary} />
         </TouchableOpacity>
       ))}
+      {driver && (
+        <View style={[styles.car, toPercent(driver.latitude, driver.longitude)]}>
+          <Ionicons name="car" size={18} color="#FFFFFF" />
+        </View>
+      )}
     </View>
   );
 }
@@ -47,4 +53,16 @@ const styles = StyleSheet.create({
   map: { backgroundColor: '#E6F2F5', overflow: 'hidden' },
   road: { position: 'absolute', backgroundColor: '#FFFFFF' },
   pin: { position: 'absolute', transform: [{ translateX: -14 }, { translateY: -28 }] },
+  car: {
+    position: 'absolute',
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: Colors.primaryDark,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ translateX: -17 }, { translateY: -17 }],
+  },
 });

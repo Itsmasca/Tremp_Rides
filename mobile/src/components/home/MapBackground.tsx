@@ -1,11 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import MapView, { Marker, UrlTile } from 'react-native-maps';
+import { WebView } from 'react-native-webview';
 
 import { Colors, Shadow } from '@/constants/theme';
-import { ANAHUAC, Coords, MERIDA_REGION } from '@/data/rides';
+import { ANAHUAC, Coords } from '@/data/rides';
 import { useUserLocation } from '@/hooks/useUserLocation';
+
+import { MAP_HTML } from './mapHtml';
+
+// Los tipos de react-native-webview chocan con los de React 19; lo usamos sin tipar
+const MapWebView = WebView as any;
 
 export type MapPin = { id: string; coords: Coords; title: string };
 
@@ -13,92 +18,95 @@ type Props = {
   pins: MapPin[];
   selectedId?: string | null;
   onSelect?: (id: string) => void;
+  driver?: Coords | null; // posición en vivo del conductor (pasajero ya aceptado)
 };
 
-// Mosaicos con datos de OpenStreetMap servidos por CARTO (estilo Voyager).
-// Los servidores de OSM bloquean a las apps que les piden tiles directamente
-// (error 403 "Access blocked", ver osm.wiki/Blocked); CARTO sí lo permite sin
-// API key mientras se muestre la atribución.
-const MAP_TILES = 'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
-
-// Mapa a pantalla completa detrás del panel (estilo Uber/DiDi)
-export default function MapBackground({ pins, selectedId, onSelect }: Props) {
-  const mapRef = useRef<MapView>(null);
+// Mapa a pantalla completa detrás del panel (estilo Uber/DiDi).
+// Corre MapLibre + OpenFreeMap dentro de un WebView: gratis y sin ninguna API key
+// (ni de Google ni de otro proveedor). Ver mapHtml.ts.
+export default function MapBackground({ pins, selectedId, onSelect, driver }: Props) {
+  const webRef = useRef<any>(null);
+  const [ready, setReady] = useState(false);
   const { coords: me } = useUserLocation();
   const centeredOnce = useRef(false);
 
-  const centerOn = (target: Coords, delta = 0.03) => {
-    mapRef.current?.animateToRegion({ ...target, latitudeDelta: delta, longitudeDelta: delta }, 600);
-  };
+  const run = (js: string) => webRef.current?.injectJavaScript(`${js}; true;`);
 
-  // La primera vez que sabemos dónde está el usuario, encuadramos su posición y la Anáhuac
+  // Pines de rides / pasajeros
   useEffect(() => {
-    if (!me || centeredOnce.current) return;
-    centeredOnce.current = true;
-    mapRef.current?.fitToCoordinates([me, ANAHUAC], {
-      edgePadding: { top: 120, right: 60, bottom: 420, left: 60 },
-      animated: true,
-    });
+    if (ready) run(`window.trempSetPins(${JSON.stringify(pins)}, ${JSON.stringify(selectedId ?? null)})`);
+  }, [ready, pins, selectedId]);
+
+  // Punto azul con mi ubicación; la primera vez encuadra mi posición y la Anáhuac
+  useEffect(() => {
+    if (!ready || !me) return;
+    run(`window.trempSetMe(${JSON.stringify(me)})`);
+    if (!centeredOnce.current) {
+      centeredOnce.current = true;
+      run(`window.trempFit(${JSON.stringify([me, ANAHUAC])})`);
+    }
+  }, [ready, me]);
+
+  // Carrito del conductor; la primera vez que aparece encuadra conductor + yo
+  const driverShown = useRef(false);
+  const meRef = useRef<Coords | null>(null);
+  useEffect(() => {
+    meRef.current = me;
   }, [me]);
+  useEffect(() => {
+    if (!ready) return;
+    run(`window.trempSetDriver(${JSON.stringify(driver ?? null)})`);
+    if (!driver) {
+      driverShown.current = false;
+      return;
+    }
+    if (!driverShown.current) {
+      driverShown.current = true;
+      run(`window.trempFit(${JSON.stringify([driver, meRef.current ?? ANAHUAC])})`);
+    }
+  }, [ready, driver]);
+
+  const onMessage = (raw: string) => {
+    let msg: any;
+    try {
+      msg = JSON.parse(raw);
+    } catch {
+      return;
+    }
+    if (msg.type === 'ready') setReady(true);
+    else if (msg.type === 'select') onSelect?.(msg.id);
+    else if (msg.type === 'error') console.warn('[mapa]', msg.message);
+  };
 
   return (
     <View style={StyleSheet.absoluteFill}>
-      <MapView
-        ref={mapRef}
-        style={StyleSheet.absoluteFill}
-        initialRegion={MERIDA_REGION}
-        showsUserLocation
-        showsMyLocationButton={false}
-        showsCompass={false}
-        toolbarEnabled={false}
-        rotateEnabled={false}>
-        <UrlTile urlTemplate={MAP_TILES} maximumZ={19} shouldReplaceMapContent />
-
-        <Marker coordinate={ANAHUAC} title="Anáhuac Mayab" anchor={{ x: 0.5, y: 0.5 }}>
-          <View style={styles.schoolPin}>
-            <Ionicons name="school" size={18} color="#FFFFFF" />
-          </View>
-        </Marker>
-
-        {pins.map((p) => {
-          const active = p.id === selectedId;
-          return (
-            <Marker
-              key={p.id}
-              coordinate={p.coords}
-              title={p.title}
-              anchor={{ x: 0.5, y: 1 }}
-              onPress={() => onSelect?.(p.id)}>
-              <Ionicons name="location" size={active ? 40 : 30} color={active ? Colors.primaryDark : Colors.primary} />
-            </Marker>
-          );
-        })}
-      </MapView>
+      <MapWebView
+        ref={webRef}
+        style={styles.web}
+        originWhitelist={['*']}
+        source={{ html: MAP_HTML }}
+        onMessage={(e: any) => onMessage(e.nativeEvent.data)}
+        javaScriptEnabled
+        scrollEnabled={false}
+        overScrollMode="never"
+        setSupportMultipleWindows={false}
+      />
 
       {/* Botón para volver a mi ubicación */}
       <TouchableOpacity
         style={styles.locateButton}
         activeOpacity={0.8}
-        onPress={() => centerOn(me ?? ANAHUAC)}>
+        onPress={() => run(`window.trempCenter(${JSON.stringify(me ?? ANAHUAC)})`)}>
         <Ionicons name="locate" size={22} color={Colors.text} />
       </TouchableOpacity>
 
-      <Text style={styles.attribution}>© OpenStreetMap contributors © CARTO</Text>
+      <Text style={styles.attribution}>© OpenFreeMap © OpenStreetMap</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  schoolPin: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: Colors.text,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
+  web: { flex: 1, backgroundColor: Colors.background },
   locateButton: {
     position: 'absolute',
     right: 16,

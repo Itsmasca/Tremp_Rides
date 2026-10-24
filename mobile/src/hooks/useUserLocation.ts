@@ -9,7 +9,8 @@ type State = {
 };
 
 // Pide permiso de ubicación y sigue la posición del usuario mientras la pantalla está montada.
-// Solo vive en memoria: nunca se manda ni se guarda (privacidad del proyecto).
+// Solo vive en memoria. El conductor la comparte en vivo con useShareLocation
+// (el backend la guarda solo en Redis con TTL, nunca en PostgreSQL).
 export function useUserLocation(): State {
   const [state, setState] = useState<State>({ coords: null, granted: null });
 

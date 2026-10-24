@@ -5,8 +5,11 @@ import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { calculatePrice, money } from '@/constants/pricing';
 import { Colors, Radius } from '@/constants/theme';
 import PillSelector from '@/components/PillSelector';
-import { Ride, RIDES, RideTime, TIMES } from '@/data/rides';
+import { ANAHUAC, Ride, RIDES, RideTime, TIMES } from '@/data/rides';
+import { useDriverLocation } from '@/hooks/useDriverLocation';
+import { useUserLocation } from '@/hooks/useUserLocation';
 import { setUser, useUser } from '@/store/user';
+import { distanceKm, etaMinutes } from '@/utils/geo';
 
 import BottomSheet from './BottomSheet';
 import MapBackground from './MapBackground';
@@ -16,12 +19,28 @@ type RequestStatus = 'esperando' | 'aceptado';
 // El precio siempre lo calcula el sistema a partir de los km del servidor
 const priceOf = (r: Ride) => calculatePrice(r.pickupKm + r.tripKm, r.vehicle);
 
+// A menos de esto (km) consideramos que el conductor ya llegó
+const ARRIVED_KM = 0.08;
+
 export default function PassengerView() {
   const user = useUser();
   const [time, setTime] = useState<RideTime | null>(user.time);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [requested, setRequested] = useState<Ride | null>(null);
   const [status, setStatus] = useState<RequestStatus>('esperando');
+  const { coords: me } = useUserLocation();
+
+  // Cuando el conductor acepta, seguimos su ubicación en vivo hasta el punto de recogida
+  const accepted = !!requested && status === 'aceptado';
+  const { coords: driverAt, live } = useDriverLocation({
+    active: accepted,
+    driverId: requested?.driverId,
+    start: requested?.coords ?? ANAHUAC,
+    pickup: me,
+  });
+  // Sin GPS (solo en la demo) usamos la Anáhuac como punto de recogida
+  const driverKm = driverAt ? distanceKm(driverAt, me ?? ANAHUAC) : null;
+  const arrived = driverKm !== null && driverKm <= ARRIVED_KM;
 
   const rides = useMemo(() => {
     // "Solo conductoras" viene del registro; no es un filtro que se cambie aquí
@@ -32,7 +51,8 @@ export default function PassengerView() {
   }, [user.womenOnly, time]);
 
   const selected = rides.find((r) => r.id === selectedId) ?? null;
-  const pins = (requested ? [requested] : rides).map((r) => ({ id: r.id, coords: r.coords, title: r.driver }));
+  // Ya aceptado: en lugar del pin fijo se ve el carrito del conductor moviéndose
+  const pins = (requested ? (accepted && driverAt ? [] : [requested]) : rides).map((r) => ({ id: r.id, coords: r.coords, title: r.driver }));
 
   const cancel = () => {
     if (status === 'esperando') {
@@ -51,10 +71,14 @@ export default function PassengerView() {
 
   if (requested) {
     const breakdown = priceOf(requested);
-    const accepted = status === 'aceptado';
+    const first = requested.driver.split(' ')[0];
+    let liveText = 'Te avisamos cuando esté cerca.';
+    if (accepted && arrived) liveText = `${first} ya llegó a tu punto de recogida.`;
+    else if (accepted && driverKm !== null) liveText = `A ${driverKm.toFixed(1)} km · llega en ~${etaMinutes(driverKm)} min`;
+    else if (accepted && !live) liveText = `Esperando la ubicación de ${first}…`;
     return (
       <>
-        <MapBackground pins={pins} selectedId={requested.id} />
+        <MapBackground pins={pins} selectedId={requested.id} driver={accepted ? driverAt : null} />
         <BottomSheet
           footer={
             <View style={{ gap: 8 }}>
@@ -70,11 +94,15 @@ export default function PassengerView() {
             </View>
           }>
           <Text style={styles.waitingTitle}>
-            {accepted ? `${requested.driver.split(' ')[0]} aceptó tu lugar 🎉` : `Esperando a que ${requested.driver.split(' ')[0]} confirme…`}
+            {!accepted ? `Esperando a que ${first} confirme…` : arrived ? `¡${first} llegó! 🚗` : `${first} va en camino 🚗`}
           </Text>
-          <Text style={styles.muted}>
-            {accepted ? 'Te avisamos cuando esté cerca.' : 'Te avisamos en cuanto acepte tu lugar.'}
-          </Text>
+          {accepted && live && !arrived && (
+            <View style={styles.liveRow}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveLabel}>Ubicación en tiempo real</Text>
+            </View>
+          )}
+          <Text style={styles.muted}>{accepted ? liveText : 'Te avisamos en cuanto acepte tu lugar.'}</Text>
 
           <View style={styles.driverCard}>
             <View style={styles.avatarLg}>
@@ -236,6 +264,9 @@ const styles = StyleSheet.create({
   requestDisabled: { backgroundColor: Colors.border },
   requestText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
   waitingTitle: { fontSize: 20, fontWeight: '800', color: Colors.text },
+  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' },
+  liveLabel: { fontSize: 12, fontWeight: '700', color: '#16A34A' },
   driverCard: {
     flexDirection: 'row',
     alignItems: 'center',

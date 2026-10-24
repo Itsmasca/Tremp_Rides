@@ -32,7 +32,7 @@ src/
 │   └── home.tsx         # Dashboard de rides
 ├── api/                 # Cliente HTTP (http.ts) y llamadas de autenticación (auth.ts)
 ├── components/          # PrimaryButton, TextField, PillSelector, ErrorText
-│   └── home/            # Mapa, panel inferior, vista pasajero y vista conductor
+│   └── home/            # Mapa (WebView + MapLibre + OpenFreeMap, sin API key), panel, vistas pasajero/conductor
 ├── store/user.ts        # Estado global del usuario (sesión, rol, preferencias)
 ├── utils/validation.ts  # Reglas de correo @anahuac.mx y contraseña
 ├── constants/api.ts     # URL del backend (EXPO_PUBLIC_API_URL)
