@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import PillSelector from '@/components/PillSelector';
 import { calculatePrice, CATEGORY_LABEL, money, VehicleCategory } from '@/constants/pricing';
 import { Colors, Radius, Shadow } from '@/constants/theme';
-import { PassengerRequest, REQUESTS, RideTime, TIMES } from '@/data/rides';
+import { ANAHUAC, Coords, PassengerRequest, REQUESTS, RideTime, TIMES } from '@/data/rides';
+import { useRouteSimulation } from '@/hooks/useRouteSimulation';
 import { useShareLocation } from '@/hooks/useShareLocation';
 import { useUserLocation } from '@/hooks/useUserLocation';
 import { setUser, useUser } from '@/store/user';
@@ -15,6 +16,12 @@ import MapBackground from './MapBackground';
 
 // Un conductor ofrece como máximo 3 lugares
 const MAX_SEATS = 3;
+
+// Demo "Simular manejo": si no hay GPS, salimos de aquí (Francisco de Montejo)
+const DEMO_START: Coords = { latitude: 21.035, longitude: -89.66 };
+// Segundos de la simulación: base + extra por cada pasajero que recoge
+const DEMO_BASE_SECONDS = 40;
+const DEMO_SECONDS_PER_STOP = 15;
 
 export default function DriverView() {
   const user = useUser();
@@ -31,7 +38,24 @@ export default function DriverView() {
 
   // En línea, el conductor comparte su ubicación en vivo para que sus pasajeros lo vean acercarse
   const { coords: me } = useUserLocation();
-  useShareLocation(online, me);
+
+  // Demo: "maneja" de tu posición a cada pasajero confirmado y luego a la Anáhuac
+  const [driving, setDriving] = useState(false);
+  const [driveRun, setDriveRun] = useState(0);
+  const route = useMemo(() => [me ?? DEMO_START, ...accepted.map((r) => r.coords), ANAHUAC], [me, accepted]);
+  const sim = useRouteSimulation(
+    online && driving,
+    route,
+    DEMO_BASE_SECONDS + DEMO_SECONDS_PER_STOP * accepted.length,
+    String(driveRun),
+  );
+  // Mientras simula, a los pasajeros les llega la posición simulada en lugar del GPS
+  useShareLocation(online, driving ? sim.coords : me);
+
+  const startDriving = () => {
+    setDriveRun((n) => n + 1);
+    setDriving(true);
+  };
 
   const priceOf = (r: PassengerRequest) => calculatePrice(r.pickupKm + r.tripKm, category);
 
@@ -67,7 +91,7 @@ export default function DriverView() {
 
   return (
     <>
-      <MapBackground pins={pins} />
+      <MapBackground pins={pins} driver={driving ? sim.coords : null} />
 
       {!online ? (
         // Desconectado: botón grande estilo DiDi
@@ -88,6 +112,7 @@ export default function DriverView() {
               onPress={() => {
                 setOnline(false);
                 setPublished(false);
+                setDriving(false);
               }}>
               <Text style={styles.disconnectText}>Desconectarse</Text>
             </TouchableOpacity>
@@ -98,6 +123,31 @@ export default function DriverView() {
             <View style={{ flex: 1 }} />
             <Text style={styles.muted}>{carName}</Text>
           </View>
+
+          {/* Demo: recorrido simulado para probar sin manejar */}
+          {driving ? (
+            <View style={styles.simCard}>
+              <Ionicons name={sim.done ? 'school' : 'car-sport'} size={20} color={Colors.primaryDark} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.simTitle}>{sim.done ? 'Llegaste a la Anáhuac 🎓' : 'Simulando manejo…'}</Text>
+                <Text style={styles.muted}>
+                  {sim.done
+                    ? 'Fin del recorrido simulado.'
+                    : accepted.length
+                      ? `Recoges a ${accepted.map((r) => r.name.split(' ')[0]).join(', ')} y vas a la Anáhuac`
+                      : 'Vas directo a la Anáhuac'}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setDriving(false)}>
+                <Text style={styles.cancelLink}>{sim.done ? 'Cerrar' : 'Detener'}</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity activeOpacity={0.85} style={styles.simButton} onPress={startDriving}>
+              <Ionicons name="play-circle-outline" size={20} color={Colors.primaryDark} />
+              <Text style={styles.simButtonText}>Simular manejo (demo)</Text>
+            </TouchableOpacity>
+          )}
 
           <View style={styles.stats}>
             <View style={styles.stat}>
@@ -296,5 +346,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   disconnect: { marginTop: 12, paddingVertical: 12, alignItems: 'center' },
+  simButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 12,
+    paddingVertical: 10,
+    borderRadius: Radius.pill,
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+  },
+  simButtonText: { color: Colors.primaryDark, fontSize: 14, fontWeight: '700' },
+  simCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 12,
+    padding: 14,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.primarySoft,
+  },
+  simTitle: { fontSize: 15, fontWeight: '700', color: Colors.text },
   disconnectText: { color: Colors.textMuted, fontSize: 15, fontWeight: '700' },
 });
