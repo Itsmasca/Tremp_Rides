@@ -173,6 +173,14 @@ eventos llevan km y minutos. Se ve en vivo en el dashboard `trempapp-demo` de Cl
 DEMO_PASSWORD=... ./scripts/demo-simulacion.sh https://<tunel>.trycloudflare.com [--rapido] [--no-llega]
 ```
 
+Datos demo en la base (cuentas `demo4`–`demo9`, idempotentes; correr en la VM):
+
+- `scripts/demo-datos.sql`: viajes de la última semana en todos los estados, pasajeros y pagos (`pagado`, `retenido`,
+  `cancelado`, `fallido`) para llenar las gráficas: `tremp-psql -f scripts/demo-datos.sql`.
+- `scripts/demo-viajes-ruta.py`: 42 viajes `pendiente` con ruta real de OSRM, cada 30 min de 6:00 a 22:00 hoy y
+  mañana, desde y hacia la Anáhuac Mayab, para que aparezcan en "Buscar viaje" de la app. Vencen al pasar su hora:
+  `python3 scripts/demo-viajes-ruta.py && tremp-psql -f /tmp/viajes-ruta.sql`.
+
 ### Logs y alertas (CloudWatch)
 
 `tremp-deploy` levanta la API con el driver `awslogs` (y `NO_COLOR=1`): los logs van al log group `/trempapp/api`
