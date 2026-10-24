@@ -1,9 +1,13 @@
 # 006 · Tareas
 
-- [ ] T1 Migración `db/004_trips_geo_outbox.sql` (PostGIS, columnas de `trips`, `outbox`, índices, CHECK, backfill) y ajustar el `INSERT INTO trips` de `seed.sql` — *AC7.1*
-- [ ] T2 docker-compose: imagen `postgis/postgis`, montar 004, servicio `osrm`, perfil `worker`; `infra/osrm/prepare.sh` + README — *AC7.2*
-- [ ] T3 Configuración `rides`/`osrm`/`outbox` en `configuration.ts` + `.env.example`; `PreferencesService` lee `RIDES_EVENTS_STREAM` de config — *AC7.3*
-- [ ] T4 Jest + `@swc/jest` + Testcontainers; scripts `test` y `test:int`
+- [x] T1 Migración `db/004_trips_geo_outbox.sql` (PostGIS, columnas de `trips`, `outbox`, índices, CHECK, backfill) y ajustar el `INSERT INTO trips` de `seed.sql` — *AC7.1*
+  - schema → 002 → 003 → 004 → seed en contenedor limpio sin errores; test de integración de la 010 la usa ✅
+- [ ] T2 docker-compose: imagen `infra/postgres` (PostGIS + pgvector, spec 010), montar 004, servicio `osrm`, perfil `worker`; `infra/osrm/prepare.sh` + README — *AC7.2*
+  - Hecho: imagen, montaje de 004, servicio `osrm`, `prepare.sh`, README. Falta: correr `prepare.sh` (descarga ~700 MB) y probar `osrm` con una ruta real; el perfil `worker` llega con T7.
+- [x] T3 Configuración `rides`/`osrm`/`outbox` en `configuration.ts` + `.env.example`; `PreferencesService` lee `RIDES_EVENTS_STREAM` de config — *AC7.3*
+  - `npm run typecheck` ✅
+- [x] T4 Jest + `@swc/jest` + Testcontainers; scripts `test` y `test:int`
+  - NestJS 12 es sólo ESM: Jest corre con `--experimental-vm-modules`. `pretest:int` construye la imagen de `infra/postgres`. `npm test` y `npm run test:int` ✅
 - [ ] T5 `OsrmClient` (+ fixtures y unit tests) — *AC2.1–AC2.3, AC1.6*
 - [ ] T6 Catálogo de eventos `rides-events.ts` + `OutboxService.enqueue(client, event)` — *AC5.1*
 - [ ] T7 `OutboxPublisher` (polling, `SKIP LOCKED`, pipeline `XADD`, attempts/last_error, apagado limpio) + `outbox-worker.main.ts` — *AC5.2–AC5.5*

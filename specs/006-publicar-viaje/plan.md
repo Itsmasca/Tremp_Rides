@@ -188,7 +188,7 @@ DELETE FROM outbox WHERE published_at < now() - make_interval(hours => $1);
 
 ## docker-compose
 
-- `postgres`: `image: postgis/postgis:17-3.5-alpine`; montar `./db/004_trips_geo_outbox.sql` como
+- `postgres`: imagen propia `infra/postgres` (PostGIS + pgvector, ver spec 010; `postgis/postgis:17-3.5` ya no construye extensiones por apt); montar `./db/004_trips_geo_outbox.sql` como
   `04-migracion-004.sql` (antes de `09-seed.sql`).
 - `osrm`: `image: ghcr.io/project-osrm/osrm-backend:v6.0.0`,
   `command: osrm-routed --algorithm mld /data/yucatan.osrm`, volumen `./infra/osrm:/data:ro`,

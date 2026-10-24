@@ -1,29 +1,29 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import Redis from 'ioredis';
+import { AppConfig } from '../config/configuration';
 import { REDIS } from '../redis/redis.constants';
 import { UpdatePreferencesDto } from './dto/update-preferences.dto';
 import { PreferencesRepository } from './preferences.repository';
 import { PreferencesUpdatedEnvelope } from './preferences.types';
 
-/**
- * Stream de destino para matching-py.
- *
- * IMPORTANTE: este stream es DISTINTO al stream interno de Trempapp
- * (trempapp:events). matching-py consume de rides.events directamente.
- * Se configura con la variable de entorno RIDES_EVENTS_STREAM.
- */
-const RIDES_EVENTS_STREAM = process.env.RIDES_EVENTS_STREAM ?? 'rides.events';
-const RIDES_EVENTS_MAXLEN = 200_000;
-
 @Injectable()
 export class PreferencesService {
   private readonly logger = new Logger(PreferencesService.name);
+  /**
+   * Stream de destino para matching-py (`ridesEvents.stream`, por defecto rides.events).
+   * IMPORTANTE: es DISTINTO al stream interno de Trempapp (trempapp:events).
+   */
+  private readonly ridesEvents: AppConfig['ridesEvents'];
 
   constructor(
     private readonly repo: PreferencesRepository,
     @Inject(REDIS) private readonly redis: Redis,
-  ) {}
+    config: ConfigService<AppConfig, true>,
+  ) {
+    this.ridesEvents = config.get('ridesEvents', { infer: true });
+  }
 
   /**
    * Actualiza las preferencias del usuario y publica el evento en rides.events.
@@ -63,14 +63,14 @@ export class PreferencesService {
 
     // 3. Publicar en rides.events (el stream que consume matching-py)
     await this.redis.xadd(
-      RIDES_EVENTS_STREAM,
-      'MAXLEN', '~', RIDES_EVENTS_MAXLEN,
+      this.ridesEvents.stream,
+      'MAXLEN', '~', this.ridesEvents.maxLen,
       '*',
       'envelope', JSON.stringify(envelope),
     );
 
     this.logger.log(
-      `preferences.updated publicado | userId=${userId} revision=${revision} stream=${RIDES_EVENTS_STREAM}`,
+      `preferences.updated publicado | userId=${userId} revision=${revision} stream=${this.ridesEvents.stream}`,
     );
   }
 

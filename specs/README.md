@@ -10,11 +10,11 @@ para evitar colisiones. Reglas en `constitution.md`.
 | 003 | [Puente a EventBridge](003-eventbridge/spec.md) | Implementado · Enmienda 1 propuesta | #5 | spec · plan · tasks | VM en otra cuenta AWS (cross-account). Despliegue pendiente. |
 | 004 | [App móvil (Expo)](004-mobile-app/spec.md) | En desarrollo | #2 | spec · tasks | Login y registro conectados (PR #16). Falta persistir sesión (T4a). Rides con datos de prueba. |
 | 005 | [CRUD de usuarios y vehículos](005-usuarios/spec.md) | Implementado | #10 | spec · plan · tasks | Catálogo de vehículos (#4). Sin auth. |
-| 006 | [Publicar viaje con OSRM](006-publicar-viaje/spec.md) | Propuesto | #7 | spec · plan · tasks | Introduce PostGIS y outbox; excepción al principio 8. |
+| 006 | [Publicar viaje con OSRM](006-publicar-viaje/spec.md) | En desarrollo | #7 | spec · plan · tasks | Introduce PostGIS y outbox; excepción al principio 8. T1, T3, T4 hechas; T2 a medias (falta preparar OSRM). |
 | 007 | [PostgreSQL](007-postgres/spec.md) | Implementado | #6 | spec · plan · tasks | Antes `002-postgres` (renumerada por colisión). |
 | 008 | [Preferencias de viaje](008-preferencias/spec.md) | Implementado* | #8 | spec · tasks | *Spec retroactiva. Bug `solo_F` → `500` corregido; quedan T8 (espacios) y T9 (Redis caído). |
 | 009 | [Autenticación](009-auth/spec.md) | Implementado | #10 | spec | Login, registro con token, `/auth/me`. `JwtAuthGuard` aún no se aplica a otras rutas. |
-| 010 | [Búsqueda con matching-py](010-busqueda-matching/spec.md) | Propuesto | #3 | spec · plan · tasks | `POST /rides/search` → matching-py `/match`. Vistas `rides`/`matches`/`user_preferences` para matching-py. Requiere 006. |
+| 010 | [Búsqueda con matching-py](010-busqueda-matching/spec.md) | En desarrollo | #3 | spec · plan · tasks | `POST /rides/search` → matching-py `/match`. Vistas `rides`/`matches`/`user_preferences` para matching-py. T1–T8 hechas; T9 espera `POST /match` en matching-py. |
 
 **Siguiente número libre: 011.**
 

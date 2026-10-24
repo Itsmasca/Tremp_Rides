@@ -10,7 +10,9 @@ services:
       retries: 5
 
   postgres:
-    image: postgres:17-alpine
+    # PostGIS (spec 006) + pgvector (matching-py, spec 010). Ver infra/postgres/Dockerfile.
+    build: ./infra/postgres
+    image: trempapp-postgres:local
     environment:
       POSTGRES_USER: ${DB_USER:-trempapp}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-trempapp}
@@ -22,11 +24,20 @@ services:
       - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
       - ./db/002_add_preferences_columns.sql:/docker-entrypoint-initdb.d/02-migracion-002.sql:ro
       - ./db/003_vehiculo_catalogo.sql:/docker-entrypoint-initdb.d/03-migracion-003.sql:ro
+      - ./db/004_trips_geo_outbox.sql:/docker-entrypoint-initdb.d/04-migracion-004.sql:ro
+      - ./db/005_matching_views.sql:/docker-entrypoint-initdb.d/05-migracion-005.sql:ro
       - ./db/seed.sql:/docker-entrypoint-initdb.d/09-seed.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       retries: 5
+
+  # Grafo de Yucatán preparado una vez con infra/osrm/prepare.sh (no se descarga solo).
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:v6.0.0
+    command: ["osrm-routed", "--algorithm", "mld", "--max-table-size", "100", "/data/yucatan.osrm"]
+    ports: ["5000:5000"]
+    volumes: ["./infra/osrm:/data:ro"]
 
   api:
     build: .
@@ -34,6 +45,9 @@ services:
     environment:
       REDIS_HOST: redis
       DB_HOST: postgres
+      OSRM_URL: http://osrm:5000
+      # matching-py corre fuera de este compose (otro repo); en Docker Desktop el host es host.docker.internal.
+      MATCHING_URL: ${MATCHING_URL:-http://host.docker.internal:8000}
     ports: ["3000:3000"]
     depends_on:
       redis: { condition: service_healthy }

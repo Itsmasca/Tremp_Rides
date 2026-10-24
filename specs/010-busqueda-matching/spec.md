@@ -1,6 +1,6 @@
 # 010 · Búsqueda de viajes con matching-py (`POST /rides/search`)
 
-**Estado:** Propuesto · **Fecha:** 2026-10-24 · **Issue:** #3 · **Relacionado:** 006 (viajes con ruta),
+**Estado:** En desarrollo (aprobado 2026-10-24) · **Fecha:** 2026-10-24 · **Issue:** #3 · **Relacionado:** 006 (viajes con ruta),
 008 (preferencias), 009 (JWT), matching-py `specs/001-osrm-matching`
 
 ## Objetivo
@@ -27,7 +27,8 @@ Como pasajero quiero indicar recogida, destino y hora para ver los viajes que me
 - **AC1.1** `POST /rides/search` con `Authorization: Bearer <token>` (`JwtAuthGuard`) y
   `{ pickup: {lat,lng}, dropoff: {lat,lng}, departureAt, timeWindowMin?, limit? }` → `200`
   con la forma de *Contrato de respuesta*.
-- **AC1.2** `passengerId` sale del token (`@CurrentUser().sub`), nunca del body (`whitelist` → `400`).
+- **AC1.2** `passengerId` sale del token (`@CurrentUser().sub`), nunca del body: si viene en el body,
+  `whitelist` lo descarta y se usa el del token (el `ValidationPipe` global no usa `forbidNonWhitelisted`).
   Sin token o token inválido → `401`.
 - **AC1.3** Validaciones → `400`, antes de llamar a matching-py:
   - `pickup` y `dropoff` dentro de `PENINSULA_BBOX` (el mismo de 006).

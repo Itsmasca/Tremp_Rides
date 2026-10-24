@@ -19,6 +19,8 @@ FROM users WHERE correo = 'demo1@anahuac.mx';
 -- Ejemplo de viaje de Ana: 20 km
 --   costo = (20 / 14.5) * 24 = $33.10 total
 --   si van 2 pasajeros -> ~$16.55 c/u (mucho mas barato que Uber)
-INSERT INTO trips (conductor_id, distancia_km, precio_total, precio_por_pasajero, capacidad_disponible, estado)
-SELECT id, 20.0, 33.10, 16.55, 2, 'pendiente'
+--   salida_en y asientos_totales son NOT NULL desde la migración 004 (spec 006).
+INSERT INTO trips (conductor_id, distancia_km, precio_total, precio_por_pasajero, capacidad_disponible, estado,
+                   salida_en, asientos_totales)
+SELECT id, 20.0, 33.10, 16.55, 2, 'pendiente', now() + interval '1 day', 2
 FROM users WHERE correo = 'demo1@anahuac.mx';

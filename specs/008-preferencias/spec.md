@@ -36,7 +36,7 @@ un texto libre (`raw_text`) que **matching-py** procesa con Bedrock para extraer
 | Principio | Excepción | Motivo / salida |
 |---|---|---|
 | 5 · Redis Streams interno como fuente de verdad | `preferences.updated` va a `rides.events`, no a `trempapp:events` | Contrato con matching-py (mismo criterio que la spec 006). |
-| 12 · Configuración en `configuration.ts` | `RIDES_EVENTS_STREAM` se lee de `process.env` en el servicio | Temporal: la spec 006 (T3) lo mueve a config. |
+| ~~12 · Configuración en `configuration.ts`~~ | ~~`RIDES_EVENTS_STREAM` se lee de `process.env` en el servicio~~ | Resuelto por 006 T3: ahora es `ridesEvents.stream` en config. |
 
 ## Defectos conocidos
 - ~~AC2.3: `solo_F` con `sexo = 'M'` respondía `500`~~ → corregido (tasks T4).

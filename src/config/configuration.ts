@@ -10,6 +10,22 @@ const int = (value: string | undefined, fallback: number): number => {
   return Number.isNaN(n) ? fallback : n;
 };
 
+const num = (value: string | undefined, fallback: number): number => {
+  const n = Number.parseFloat(value ?? '');
+  return Number.isNaN(n) ? fallback : n;
+};
+
+/** `minLng,minLat,maxLng,maxLat`. */
+export type Bbox = { minLng: number; minLat: number; maxLng: number; maxLat: number };
+
+const bbox = (value: string): Bbox => {
+  const [minLng, minLat, maxLng, maxLat] = value.split(',').map(Number);
+  if ([minLng, minLat, maxLng, maxLat].some((n) => Number.isNaN(n))) {
+    throw new Error(`PENINSULA_BBOX inválido: "${value}" (esperado minLng,minLat,maxLng,maxLat)`);
+  }
+  return { minLng, minLat, maxLng, maxLat };
+};
+
 export const configuration = () => {
   const prefix = process.env.REDIS_PREFIX ?? 'trempapp:';
   const stream = `${prefix}${process.env.EVENTS_STREAM ?? 'events'}`;
@@ -54,6 +70,36 @@ export const configuration = () => {
       blockMs: int(process.env.EVENTS_BLOCK_MS, 5_000),
       maxDeliveries: int(process.env.EVENTS_MAX_DELIVERIES, 5),
       claimIdleMs: int(process.env.EVENTS_CLAIM_IDLE_MS, 30_000),
+    },
+    /** Stream que consume matching-py (`preferences.updated`, `ride.created`). Distinto de `events.stream`. */
+    ridesEvents: {
+      stream: process.env.RIDES_EVENTS_STREAM ?? 'rides.events',
+      maxLen: int(process.env.RIDES_EVENTS_MAXLEN, 200_000),
+    },
+    rides: {
+      peninsulaBbox: bbox(process.env.PENINSULA_BBOX ?? '-90.5,19.5,-87.4,21.7'),
+      maxDaysAhead: int(process.env.MAX_DAYS_AHEAD, 14),
+      overlapWindowMin: int(process.env.OVERLAP_WINDOW_MIN, 60),
+      routeMaxPoints: int(process.env.ROUTE_MAX_POINTS, 500),
+      routeSimplifyTolerance: num(process.env.ROUTE_SIMPLIFY_TOLERANCE, 0.00005),
+      routeRetentionHours: int(process.env.ROUTE_RETENTION_HOURS, 24),
+      routePurgeIntervalMs: int(process.env.ROUTE_PURGE_INTERVAL_MS, 600_000),
+    },
+    osrm: {
+      url: process.env.OSRM_URL ?? 'http://localhost:5000',
+      profile: process.env.OSRM_PROFILE ?? 'driving',
+      timeoutMs: int(process.env.OSRM_TIMEOUT_MS, 2_000),
+    },
+    outbox: {
+      inline: bool(process.env.OUTBOX_INLINE ?? 'true'),
+      pollMs: int(process.env.OUTBOX_POLL_MS, 500),
+      batchSize: int(process.env.OUTBOX_BATCH_SIZE, 100),
+      maxAttempts: int(process.env.OUTBOX_MAX_ATTEMPTS, 10),
+    },
+    /** matching-py (`POST /match`, spec 010). Red interna, sin auth. */
+    matching: {
+      url: process.env.MATCHING_URL ?? 'http://localhost:8000',
+      timeoutMs: int(process.env.MATCHING_TIMEOUT_MS, 3_000),
     },
     eventBridge: {
       enabled: bool(process.env.EVENTBRIDGE_ENABLED),
