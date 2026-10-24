@@ -25,6 +25,7 @@ src/
 │   └── home/            # Mapa, panel inferior, vista pasajero y vista conductor
 ├── store/user.ts        # Estado global del usuario (rol, preferencias)
 ├── constants/theme.ts   # Paleta de colores, radios y sombras
+├── constants/pricing.ts # Fórmula de precio (rendimiento, gasolina, 70/30)
 └── data/rides.ts        # Datos de prueba (mock)
 ```
 

@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
+import { VehicleCategory } from '@/constants/pricing';
+
 // Estado global mínimo del usuario (sin librerías, ideal para hackathon)
 export type Role = 'pasajero' | 'conductor';
 
@@ -8,7 +10,8 @@ export type User = {
   gender: 'hombre' | 'mujer' | null;
   womenOnly: boolean;
   hasVehicle: boolean;
-  vehicleType: 'Sedan' | 'SUV' | 'Camioneta' | null;
+  vehicleType: VehicleCategory | null;
+  carName: string | null; // del catálogo de la plataforma
   role: Role;
 };
 
@@ -18,6 +21,7 @@ let user: User = {
   womenOnly: false,
   hasVehicle: false,
   vehicleType: null,
+  carName: null,
   role: 'pasajero',
 };
 

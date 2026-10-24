@@ -24,6 +24,12 @@ lista de rides seleccionables y botón "Pedir lugar". Tras pedir: estado "espera
 Desconectado: botón "IR". Conectado: publica viaje (hora, precio por lugar, lugares) y recibe
 solicitudes que acepta/rechaza hasta llenar la capacidad.
 
+## Precio del viaje (issue #4)
+
+La app muestra únicamente el monto final que paga el pasajero; no explica la fórmula ni expone inputs de precio.
+Mientras no hay backend, `mobile/src/constants/pricing.ts` replica el cálculo del issue (km ÷ rendimiento por categoría
+× gasolina Premium × 70%) con los valores iniciales. El conductor solo elige hora de salida y lugares.
+
 ## Reglas alineadas con el esquema (`db/schema.sql`)
 - Sólo correos `@anahuac.mx` (pendiente validar en la app).
 - La pregunta `solo_F` sólo se muestra cuando `sexo = 'F'`.

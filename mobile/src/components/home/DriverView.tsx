@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import PillSelector from '@/components/PillSelector';
+import { calculatePrice, CATEGORY_LABEL, money, VehicleCategory } from '@/constants/pricing';
 import { Colors, Radius, Shadow } from '@/constants/theme';
 import { PassengerRequest, REQUESTS } from '@/data/rides';
 import { useUser } from '@/store/user';
@@ -11,25 +12,50 @@ import BottomSheet from './BottomSheet';
 import MapBackground from './MapBackground';
 
 const TIMES = ['6:30 AM', '7:00 AM', '7:30 AM', '8:00 AM'];
-const PRICES = ['20', '25', '30', '35'];
 
 export default function DriverView() {
   const user = useUser();
+  // Si entró sin registro (demo), asumimos sedán
+  const category: VehicleCategory = user.vehicleType ?? 'Sedan';
+  const carName = user.carName ?? `${CATEGORY_LABEL[category]}`;
+
   const [online, setOnline] = useState(false);
   const [published, setPublished] = useState(false);
   const [time, setTime] = useState<string | null>('7:00 AM');
-  const [price, setPrice] = useState<string | null>('25');
   const [seats, setSeats] = useState(3);
   const [requests, setRequests] = useState<PassengerRequest[]>(REQUESTS);
   const [accepted, setAccepted] = useState<PassengerRequest[]>([]);
 
+  const priceOf = (r: PassengerRequest) => calculatePrice(r.pickupKm + r.tripKm, category);
+
   const accept = (r: PassengerRequest) => {
     if (accepted.length >= seats) return;
+    // Al aceptar, el monto queda fijo
     setAccepted((a) => [...a, r]);
     setRequests((list) => list.filter((x) => x.id !== r.id));
   };
   const reject = (r: PassengerRequest) => setRequests((list) => list.filter((x) => x.id !== r.id));
 
+  const cancelTrip = () => {
+    Alert.alert(
+      '¿Cancelar el viaje?',
+      'Se avisará a los pasajeros de inmediato.',
+      [
+        { text: 'Volver', style: 'cancel' },
+        {
+          text: 'Cancelar viaje',
+          style: 'destructive',
+          onPress: () => {
+            setPublished(false);
+            setAccepted([]);
+            setRequests(REQUESTS);
+          },
+        },
+      ],
+    );
+  };
+
+  const earnedToday = accepted.reduce((sum, r) => sum + priceOf(r).passengerPays, 0);
   const pins = online && published ? [...requests, ...accepted].map((r) => ({ id: r.id, coords: r.coords, title: r.name })) : [];
 
   return (
@@ -63,13 +89,13 @@ export default function DriverView() {
             <View style={styles.onlineDot} />
             <Text style={styles.statusText}>En línea</Text>
             <View style={{ flex: 1 }} />
-            <Text style={styles.muted}>{user.vehicleType ?? 'Tu auto'}</Text>
+            <Text style={styles.muted}>{carName}</Text>
           </View>
 
           <View style={styles.stats}>
             <View style={styles.stat}>
-              <Text style={styles.statValue}>${accepted.length * Number(price ?? 0)}</Text>
-              <Text style={styles.muted}>Ganado hoy</Text>
+              <Text style={styles.statValue}>{money(earnedToday)}</Text>
+              <Text style={styles.muted}>Recibes hoy</Text>
             </View>
             <View style={styles.stat}>
               <Text style={styles.statValue}>
@@ -88,8 +114,6 @@ export default function DriverView() {
               <Text style={styles.section}>Publica tu viaje a la Anáhuac</Text>
               <Text style={styles.label}>Hora de salida</Text>
               <PillSelector options={TIMES.map((t) => ({ label: t, value: t }))} value={time} onChange={setTime} />
-              <Text style={styles.label}>Precio por lugar</Text>
-              <PillSelector options={PRICES.map((p) => ({ label: `$${p}`, value: p }))} value={price} onChange={setPrice} />
               <Text style={styles.label}>Lugares disponibles</Text>
               <View style={styles.stepper}>
                 <TouchableOpacity style={styles.stepBtn} onPress={() => setSeats((s) => Math.max(1, s - 1))}>
@@ -100,6 +124,7 @@ export default function DriverView() {
                   <Ionicons name="add" size={22} color={Colors.text} />
                 </TouchableOpacity>
               </View>
+
               <TouchableOpacity activeOpacity={0.85} style={styles.publish} onPress={() => setPublished(true)}>
                 <Text style={styles.publishText}>Publicar viaje</Text>
               </TouchableOpacity>
@@ -109,49 +134,59 @@ export default function DriverView() {
               <View style={styles.tripCard}>
                 <Ionicons name="navigate" size={20} color={Colors.primaryDark} />
                 <Text style={styles.tripText}>
-                  Sales {time} · ${price} por lugar
+                  Sales {time} · {seats} {seats === 1 ? 'lugar' : 'lugares'}
                 </Text>
-                <TouchableOpacity onPress={() => setPublished(false)}>
-                  <Text style={styles.edit}>Editar</Text>
+                <TouchableOpacity onPress={cancelTrip}>
+                  <Text style={styles.cancelLink}>Cancelar</Text>
                 </TouchableOpacity>
               </View>
 
               <Text style={styles.section}>Solicitudes ({requests.length})</Text>
               {requests.length === 0 && <Text style={styles.muted}>No hay solicitudes nuevas por ahora.</Text>}
-              {requests.map((r) => (
-                <View key={r.id} style={styles.requestRow}>
-                  <View style={styles.avatar}>
-                    <Ionicons name="person" size={22} color={Colors.primary} />
+              {requests.map((r) => {
+                const b = priceOf(r);
+                return (
+                  <View key={r.id} style={styles.requestRow}>
+                    <View style={styles.avatar}>
+                      <Ionicons name="person" size={22} color={Colors.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.name}>
+                        {r.name} <Text style={styles.rating}>★ {r.rating.toFixed(1)}</Text>
+                      </Text>
+                      <Text style={styles.muted}>
+                        {r.pickup} · {b.km} km
+                      </Text>
+                      <Text style={styles.amount}>{money(b.passengerPays)}</Text>
+                    </View>
+                    <TouchableOpacity style={styles.rejectBtn} onPress={() => reject(r)}>
+                      <Ionicons name="close" size={20} color={Colors.danger} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.acceptBtn, accepted.length >= seats && { opacity: 0.4 }]}
+                      onPress={() => accept(r)}>
+                      <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                    </TouchableOpacity>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.name}>
-                      {r.name} <Text style={styles.rating}>★ {r.rating.toFixed(1)}</Text>
-                    </Text>
-                    <Text style={styles.muted}>
-                      {r.pickup} · a {r.distanceKm} km
-                    </Text>
-                  </View>
-                  <TouchableOpacity style={styles.rejectBtn} onPress={() => reject(r)}>
-                    <Ionicons name="close" size={20} color={Colors.danger} />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.acceptBtn, accepted.length >= seats && { opacity: 0.4 }]}
-                    onPress={() => accept(r)}>
-                    <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              ))}
+                );
+              })}
 
               {accepted.length > 0 && (
                 <>
                   <Text style={styles.section}>Pasajeros confirmados</Text>
-                  {accepted.map((r) => (
-                    <View key={r.id} style={styles.requestRow}>
-                      <Ionicons name="checkmark-circle" size={22} color={Colors.primary} />
-                      <Text style={[styles.name, { flex: 1 }]}>{r.name}</Text>
-                      <Text style={styles.muted}>{r.pickup}</Text>
-                    </View>
-                  ))}
+                  {accepted.map((r) => {
+                    const b = priceOf(r);
+                    return (
+                      <View key={r.id} style={styles.requestRow}>
+                        <Ionicons name="checkmark-circle" size={22} color={Colors.primary} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.name}>{r.name}</Text>
+                          <Text style={styles.muted}>{r.pickup}</Text>
+                        </View>
+                        <Text style={styles.name}>{money(b.passengerPays)}</Text>
+                      </View>
+                    );
+                  })}
                 </>
               )}
             </>
@@ -220,7 +255,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primarySoft,
   },
   tripText: { flex: 1, fontSize: 15, fontWeight: '600', color: Colors.text },
-  edit: { color: Colors.primaryDark, fontWeight: '700' },
+  cancelLink: { color: Colors.danger, fontWeight: '700' },
   requestRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -239,6 +274,7 @@ const styles = StyleSheet.create({
   },
   name: { fontSize: 15, fontWeight: '700', color: Colors.text },
   rating: { fontSize: 13, fontWeight: '600', color: Colors.primaryDark },
+  amount: { fontSize: 13, fontWeight: '700', color: Colors.primaryDark, marginTop: 2 },
   rejectBtn: {
     width: 40,
     height: 40,
