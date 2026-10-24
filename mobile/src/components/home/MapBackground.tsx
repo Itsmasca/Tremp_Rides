@@ -1,16 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { WebView } from 'react-native-webview';
 
 import { Colors, Shadow } from '@/constants/theme';
 import { ANAHUAC, Coords } from '@/data/rides';
 import { useUserLocation } from '@/hooks/useUserLocation';
 
+import MapFrame, { MapFrameHandle } from './MapFrame';
 import { MAP_HTML } from './mapHtml';
-
-// Los tipos de react-native-webview chocan con los de React 19; lo usamos sin tipar
-const MapWebView = WebView as any;
 
 export type MapPin = { id: string; coords: Coords; title: string };
 
@@ -22,15 +19,15 @@ type Props = {
 };
 
 // Mapa a pantalla completa detrás del panel (estilo Uber/DiDi).
-// Corre MapLibre + OpenFreeMap dentro de un WebView: gratis y sin ninguna API key
-// (ni de Google ni de otro proveedor). Ver mapHtml.ts.
+// Corre MapLibre + OpenFreeMap dentro de un WebView (celular) o un iframe (navegador):
+// gratis y sin ninguna API key. Ver mapHtml.ts y MapFrame.
 export default function MapBackground({ pins, selectedId, onSelect, driver }: Props) {
-  const webRef = useRef<any>(null);
+  const frameRef = useRef<MapFrameHandle>(null);
   const [ready, setReady] = useState(false);
   const { coords: me } = useUserLocation();
   const centeredOnce = useRef(false);
 
-  const run = (js: string) => webRef.current?.injectJavaScript(`${js}; true;`);
+  const run = (js: string) => frameRef.current?.run(js);
 
   // Pines de rides / pasajeros
   useEffect(() => {
@@ -80,17 +77,7 @@ export default function MapBackground({ pins, selectedId, onSelect, driver }: Pr
 
   return (
     <View style={StyleSheet.absoluteFill}>
-      <MapWebView
-        ref={webRef}
-        style={styles.web}
-        originWhitelist={['*']}
-        source={{ html: MAP_HTML }}
-        onMessage={(e: any) => onMessage(e.nativeEvent.data)}
-        javaScriptEnabled
-        scrollEnabled={false}
-        overScrollMode="never"
-        setSupportMultipleWindows={false}
-      />
+      <MapFrame ref={frameRef} html={MAP_HTML} onMessage={onMessage} />
 
       {/* Botón para volver a mi ubicación */}
       <TouchableOpacity
@@ -106,7 +93,6 @@ export default function MapBackground({ pins, selectedId, onSelect, driver }: Pr
 }
 
 const styles = StyleSheet.create({
-  web: { flex: 1, backgroundColor: Colors.background },
   locateButton: {
     position: 'absolute',
     right: 16,

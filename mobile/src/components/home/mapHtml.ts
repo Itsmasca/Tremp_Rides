@@ -36,7 +36,12 @@ export const MAP_HTML = `<!doctype html>
 <body>
 <div id="map"></div>
 <script>
-  var send = function (msg) { window.ReactNativeWebView && window.ReactNativeWebView.postMessage(JSON.stringify(msg)); };
+  // Celular: WebView de React Native · Navegador: iframe dentro de la página
+  var send = function (msg) {
+    var data = JSON.stringify(msg);
+    if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(data);
+    else if (window.parent !== window) window.parent.postMessage(data, '*');
+  };
   var map = new maplibregl.Map({
     container: 'map',
     style: '${MAP_STYLE_URL}',
@@ -123,7 +128,7 @@ export const MAP_HTML = `<!doctype html>
     map.easeTo({ center: [c.longitude, c.latitude], zoom: 14, padding: PADDING, duration: 600 });
   };
 
-  map.on('load', function () { send({ type: 'ready' }); });
+  map.on('load', function () { window.trempReady = true; send({ type: 'ready' }); });
   map.on('error', function (e) { send({ type: 'error', message: String((e && e.error && e.error.message) || e) }); });
 </script>
 </body>
