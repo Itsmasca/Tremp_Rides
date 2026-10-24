@@ -12,7 +12,7 @@ type Props = {
   onSelect?: (id: string) => void;
 };
 
-// react-native-maps no corre en web: dibujamos un mapa falso para previsualizar
+// En web (vista previa) dibujamos un mapa falso; en el celular se usa MapLibre + OpenFreeMap
 function toPercent(lat: number, lng: number) {
   const top = ((MERIDA_REGION.latitude + MERIDA_REGION.latitudeDelta / 2 - lat) / MERIDA_REGION.latitudeDelta) * 100;
   const left = ((lng - (MERIDA_REGION.longitude - MERIDA_REGION.longitudeDelta / 2)) / MERIDA_REGION.longitudeDelta) * 100;
