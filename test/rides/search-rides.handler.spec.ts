@@ -38,6 +38,7 @@ const row = (id: string, routePd: SearchRideRow['route_pd'] = null): SearchRideR
   precio_por_pasajero: '18.50',
   driver_id: `driver-${id}`,
   nombre: `Conductor ${id}`,
+  sexo: 'F',
   foto_url: null,
   route_pd: routePd,
 });
@@ -113,7 +114,7 @@ describe('SearchRidesHandler', () => {
       pricePerPassenger: 18.5,
       seatsAvailable: 2,
       departureAt: '2026-10-26T13:30:00.000Z',
-      driver: { id: 'driver-a', nombre: 'Conductor a', fotoUrl: null },
+      driver: { id: 'driver-a', nombre: 'Conductor a', sexo: 'F', fotoUrl: null },
     });
     expect(results[0]).not.toHaveProperty('score');
   });

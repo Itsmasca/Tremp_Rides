@@ -50,7 +50,8 @@ Como pasajero quiero indicar recogida, destino y hora para ver los viajes que me
 
 ### US3 · Resultados completos para la app
 - **AC3.1** Con los `rideId` recibidos, crud-ts hace **una** consulta a `trips` + `users` y añade a cada
-  resultado `departureAt`, `seatsAvailable`, `pricePerPassenger` y `driver { id, nombre, fotoUrl }`.
+  resultado `departureAt`, `seatsAvailable`, `pricePerPassenger` y `driver { id, nombre, sexo, fotoUrl }` (`sexo` para el filtro "solo conductoras" de la app;
+  matching-py todavía ignora `gender_preference`).
 - **AC3.2** Se descartan los candidatos cuyo viaje ya no existe, no está `pendiente` o no tiene asientos
   (cambió entre la búsqueda y la respuesta). El orden de matching-py se mantiene y `rank` se renumera desde 1.
 - **AC3.3** **Privacidad:** `routeGeometry` se recorta en PostGIS al tramo recogida → bajada
@@ -93,7 +94,7 @@ Como pasajero quiero indicar recogida, destino y hora para ver los viajes que me
       "pricePerPassenger": 18.5,
       "detourS": 140,
       "pickupEtaS": 420,
-      "driver": { "id": "uuid", "nombre": "Ana", "fotoUrl": null },
+      "driver": { "id": "uuid", "nombre": "Ana", "sexo": "F", "fotoUrl": null },
       "snappedPickup": { "lat": 21.0186, "lng": -89.5847 },
       "snappedDropoff": { "lat": 20.9671, "lng": -89.6237 },
       "routeGeometry": { "type": "LineString", "coordinates": [[-89.5847, 21.0186], [-89.6237, 20.9671]] }

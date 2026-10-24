@@ -9,6 +9,7 @@ export type SearchRideRow = {
   precio_por_pasajero: string | null; // NUMERIC llega como string
   driver_id: string;
   nombre: string;
+  sexo: 'M' | 'F' | 'otro';
   foto_url: string | null;
   route_pd: GeoJsonLineString | null;
 };
@@ -32,7 +33,7 @@ WITH c AS (
    WHERE c.geom IS NOT NULL
 )
 SELECT t.id, t.salida_en, t.capacidad_disponible, t.precio_por_pasajero,
-       u.id AS driver_id, u.nombre, u.foto_url,
+       u.id AS driver_id, u.nombre, u.sexo, u.foto_url,
        CASE WHEN g.p_frac < g.d_frac
             THEN ST_AsGeoJSON(ST_LineSubstring(g.line, g.p_frac, g.d_frac))::json
        END AS route_pd

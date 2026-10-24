@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# Despliega matching-py (repo Itsmasca/Tremp_smart) en la VM, junto a tremp-api (spec 010).
+#   sudo tremp-matching-deploy            # último origin/main
+#   sudo tremp-matching-deploy <sha|tag>  # una versión concreta
+# Construye la imagen en la VM, recrea el contenedor `matching-py` en la red `tremp` y comprueba /health.
+# Si no responde, vuelve a levantar la imagen anterior (mismo criterio que tremp-deploy).
+set -euo pipefail
+
+REF="${1:-origin/main}"
+REPO_URL="https://github.com/Itsmasca/Tremp_smart.git"
+SRC="/opt/tremp/Tremp_smart"
+ENV_FILE="/etc/tremp/matching.env"
+NAME="matching-py"
+NETWORK="tremp"
+# Logs: locales con rotación por defecto. Con MATCHING_LOG_GROUP=/trempapp/matching van a CloudWatch
+# (el log group y el permiso logs:PutLogEvents del rol de la VM tienen que existir, o el contenedor no arranca).
+LOG_GROUP="${MATCHING_LOG_GROUP:-}"
+if [ -n "$LOG_GROUP" ]; then
+  LOG_OPTS=(--log-driver awslogs --log-opt awslogs-region=us-east-1 --log-opt awslogs-group="$LOG_GROUP"
+            --log-opt awslogs-create-group=false)
+else
+  LOG_OPTS=(--log-driver json-file --log-opt max-size=10m --log-opt max-file=3)
+fi
+
+[ -f "$ENV_FILE" ] || { echo "Falta $ENV_FILE (ver infra/matching/matching.env.example)" >&2; exit 1; }
+
+if [ ! -d "$SRC/.git" ]; then
+  git clone --quiet "$REPO_URL" "$SRC"
+fi
+git -C "$SRC" fetch --quiet --tags origin
+git -C "$SRC" checkout --quiet --detach "$REF"
+SHA="$(git -C "$SRC" rev-parse --short=12 HEAD)"
+IMAGE="tremp-matching:$SHA"
+
+echo "Construyendo $IMAGE…"
+docker build --quiet -t "$IMAGE" "$SRC" >/dev/null
+
+PREV_IMAGE="$(docker inspect --format '{{.Config.Image}}' "$NAME" 2>/dev/null || true)"
+
+run() {
+  docker rm -f "$NAME" >/dev/null 2>&1 || true
+  # Sin puertos publicados: sólo tremp-api lo alcanza por la red `tremp` (POST /match no tiene auth).
+  docker run -d --name "$NAME" --network "$NETWORK" --restart unless-stopped \
+    --env-file "$ENV_FILE" --memory 512m "${LOG_OPTS[@]}" \
+    "$1" >/dev/null
+}
+
+healthy() {
+  for _ in $(seq 1 30); do
+    if docker run --rm --network "$NETWORK" curlimages/curl:8.10.1 -fsS -m 2 "http://$NAME:8000/health" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 2
+  done
+  return 1
+}
+
+run "$IMAGE"
+if healthy; then
+  echo "matching-py $SHA desplegado"
+  # Conserva sólo la imagen actual y la anterior.
+  docker images 'tremp-matching' --format '{{.Repository}}:{{.Tag}}' | grep -vxF -e "$IMAGE" -e "$PREV_IMAGE" | xargs -r docker rmi >/dev/null 2>&1 || true
+  exit 0
+fi
+
+echo "matching-py $SHA no responde en /health; últimos logs:" >&2
+docker logs --tail 30 "$NAME" >&2 || true
+if [ -n "$PREV_IMAGE" ] && [ "$PREV_IMAGE" != "$IMAGE" ]; then
+  echo "Volviendo a $PREV_IMAGE" >&2
+  run "$PREV_IMAGE"
+fi
+exit 1

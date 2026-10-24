@@ -1,6 +1,7 @@
 import { VehicleCategory } from '@/constants/pricing';
 
-// Datos de prueba mientras no hay backend.
+// Datos de prueba: se muestran junto a los rides reales de POST /rides/search (src/api/rides.ts)
+// para que la demo funcione aunque no haya viajes publicados o el backend no responda.
 // Los km los calcula el navegador en el servidor; aquí vienen ya calculados.
 export type Coords = { latitude: number; longitude: number };
 
@@ -12,11 +13,11 @@ export type Ride = {
   id: string;
   driverId?: string; // id del conductor en el backend; los rides de prueba no tienen
   driver: string;
-  driverGender: 'hombre' | 'mujer';
-  rating: number;
+  driverGender: 'hombre' | 'mujer' | null; // null: el backend no lo sabe
+  rating?: number; // los rides reales aún no tienen calificación
   origin: string;
   coords: Coords;
-  departure: RideTime;
+  departure: string; // "7:00 AM"; en los de prueba siempre es uno de TIMES
   etaMin: number;
   seats: number;
   vehicle: VehicleCategory;
@@ -24,6 +25,8 @@ export type Ride = {
   // Tramo conductor → recogida + recogida → Anáhuac (calculado en el servidor)
   pickupKm: number;
   tripKm: number;
+  price?: number; // precio por pasajero que manda el backend; si falta, se calcula con los km
+  live?: true; // viene de POST /rides/search (no es de prueba)
 };
 
 export type PassengerRequest = {

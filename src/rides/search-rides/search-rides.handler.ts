@@ -25,7 +25,8 @@ export type SearchRideResult = {
   pricePerPassenger: number | null;
   detourS: number;
   pickupEtaS: number;
-  driver: { id: string; nombre: string; fotoUrl: string | null };
+  /** `sexo` para el filtro "solo conductoras" de la app (matching-py aún ignora `gender_preference`). */
+  driver: { id: string; nombre: string; sexo: 'M' | 'F' | 'otro'; fotoUrl: string | null };
   snappedPickup: LatLng;
   snappedDropoff: LatLng;
   routeGeometry: GeoJsonLineString | null;
@@ -126,7 +127,7 @@ export class SearchRidesHandler {
         pricePerPassenger: row.precio_por_pasajero === null ? null : Number(row.precio_por_pasajero),
         detourS: c.detourS,
         pickupEtaS: c.pickupEtaS,
-        driver: { id: row.driver_id, nombre: row.nombre, fotoUrl: row.foto_url },
+        driver: { id: row.driver_id, nombre: row.nombre, sexo: row.sexo, fotoUrl: row.foto_url },
         snappedPickup: c.snappedPickup,
         snappedDropoff: c.snappedDropoff,
         routeGeometry: row.route_pd,

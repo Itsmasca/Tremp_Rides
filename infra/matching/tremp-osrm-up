@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Levanta OSRM (grafo de Yucatán) en la red `tremp` de la VM. Lo usan matching-py y POST /rides (spec 006).
+# El grafo (~170 MB) se prepara con infra/osrm/prepare.sh y se copia a /opt/tremp/osrm/ (ver README).
+set -euo pipefail
+
+DATA="/opt/tremp/osrm"
+IMAGE="ghcr.io/project-osrm/osrm-backend:v6.0.0"
+
+[ -f "$DATA/yucatan.osrm.mldgr" ] || { echo "Falta el grafo en $DATA (yucatan.osrm.*)" >&2; exit 1; }
+
+docker rm -f osrm >/dev/null 2>&1 || true
+docker run -d --name osrm --network tremp --restart unless-stopped --memory 768m \
+  -v "$DATA:/data:ro" "$IMAGE" \
+  osrm-routed --algorithm mld --max-table-size 100 /data/yucatan.osrm >/dev/null
+
+for _ in $(seq 1 30); do
+  if docker run --rm --network tremp curlimages/curl:8.10.1 -fsS -m 2 \
+       "http://osrm:5000/route/v1/driving/-89.6237,20.9671;-89.5847,21.0186?overview=false" 2>/dev/null | grep -q '"Ok"'; then
+    echo "osrm listo"
+    exit 0
+  fi
+  sleep 2
+done
+echo "osrm no responde; últimos logs:" >&2
+docker logs --tail 30 osrm >&2
+exit 1

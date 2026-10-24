@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { searchRides } from '@/api/rides';
 import { calculatePrice, money } from '@/constants/pricing';
 import { Colors, Radius } from '@/constants/theme';
 import PillSelector from '@/components/PillSelector';
@@ -17,8 +18,11 @@ import MapBackground from './MapBackground';
 // esperando: el conductor no ha aceptado · aceptado: viene por ti · en_viaje: rumbo a la Anáhuac
 type RequestStatus = 'esperando' | 'aceptado' | 'en_viaje';
 
-// El precio siempre lo calcula el sistema a partir de los km del servidor
-const priceOf = (r: Ride) => calculatePrice(r.pickupKm + r.tripKm, r.vehicle);
+// Precio por pasajero: el del backend si lo manda; si no, el sistema lo calcula con los km
+const priceOf = (r: Ride) => r.price ?? calculatePrice(r.pickupKm + r.tripKm, r.vehicle).passengerPays;
+
+// Sin GPS (web o permiso negado) se busca desde el centro de Mérida
+const MERIDA_CENTRO = { latitude: 20.9674, longitude: -89.6237 };
 
 // A menos de esto (km) consideramos que el conductor ya llegó
 const ARRIVED_KM = 0.08;
@@ -34,6 +38,31 @@ export default function PassengerView() {
   const [status, setStatus] = useState<RequestStatus>('esperando');
   const [stars, setStars] = useState(0);
   const { coords: me } = useUserLocation();
+  const [liveRides, setLiveRides] = useState<Ride[]>([]);
+  const [searchFailed, setSearchFailed] = useState(false);
+
+  // Rides reales (POST /rides/search → matching-py). Se repite al cambiar la hora o moverse ~100 m.
+  const from = me ?? MERIDA_CENTRO;
+  const fromKey = `${from.latitude.toFixed(3)},${from.longitude.toFixed(3)}`;
+  useEffect(() => {
+    if (!user.token || !time || requested) return;
+    let cancelled = false;
+    searchRides({ pickup: from, dropoff: ANAHUAC, time, token: user.token })
+      .then((list) => {
+        if (cancelled) return;
+        setLiveRides(list);
+        setSearchFailed(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLiveRides([]);
+        setSearchFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fromKey resume `from`
+  }, [user.token, time, fromKey, requested]);
 
   // Punto de recogida = mi GPS. Sin GPS (solo en la demo) usamos un punto entre el conductor y la Anáhuac
   const pickup = me ?? lerp(requested?.coords ?? ANAHUAC, ANAHUAC, 0.4);
@@ -58,11 +87,13 @@ export default function PassengerView() {
 
   const rides = useMemo(() => {
     // "Solo conductoras" viene del registro; no es un filtro que se cambie aquí
-    const list = user.womenOnly ? RIDES.filter((r) => r.driverGender === 'mujer') : [...RIDES];
+    // Reales primero; los de prueba siguen para la demo. Con "solo conductoras" se ocultan los de género desconocido.
+    const all = [...liveRides, ...RIDES];
+    const list = user.womenOnly ? all.filter((r) => r.driverGender === 'mujer') : all;
     // Primero los rides que salen a la hora que eligió el pasajero
-    if (time) list.sort((a, b) => Number(b.departure === time) - Number(a.departure === time));
+    if (time) list.sort((a, b) => Number(!!b.live) - Number(!!a.live) || Number(b.departure === time) - Number(a.departure === time));
     return list;
-  }, [user.womenOnly, time]);
+  }, [user.womenOnly, time, liveRides]);
 
   const selected = rides.find((r) => r.id === selectedId) ?? null;
   // Ya aceptado: en lugar del pin fijo se ve el carrito del conductor moviéndose
@@ -91,7 +122,7 @@ export default function PassengerView() {
   };
 
   if (requested) {
-    const breakdown = priceOf(requested);
+    const price = priceOf(requested);
     const first = requested.driver.split(' ')[0];
 
     let title = `Esperando a que ${first} confirme…`;
@@ -135,7 +166,7 @@ export default function PassengerView() {
       footer = (
         <View style={styles.tripNote}>
           <Ionicons name="shield-checkmark-outline" size={18} color={Colors.primaryDark} />
-          <Text style={styles.tripNoteText}>Viaje en curso · {money(breakdown.passengerPays)}</Text>
+          <Text style={styles.tripNoteText}>Viaje en curso · {money(price)}</Text>
         </View>
       );
     } else if (finished) {
@@ -176,10 +207,10 @@ export default function PassengerView() {
             <View style={{ flex: 1 }}>
               <Text style={styles.rideName}>{requested.driver}</Text>
               <Text style={styles.muted}>{requested.car}</Text>
-              <Text style={styles.rating}>★ {requested.rating.toFixed(1)}</Text>
+              {requested.rating != null && <Text style={styles.rating}>★ {requested.rating.toFixed(1)}</Text>}
             </View>
             <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.price}>{money(breakdown.passengerPays)}</Text>
+              <Text style={styles.price}>{money(price)}</Text>
               <Text style={styles.muted}>{finished ? 'Total del viaje' : requested.departure}</Text>
             </View>
           </View>
@@ -204,7 +235,7 @@ export default function PassengerView() {
             }}>
             <Text style={styles.requestText}>
               {selected
-                ? `Pedir lugar con ${selected.driver.split(' ')[0]} · ${money(priceOf(selected).passengerPays)}`
+                ? `Pedir lugar con ${selected.driver.split(' ')[0]} · ${money(priceOf(selected))}`
                 : 'Elige un ride'}
             </Text>
           </TouchableOpacity>
@@ -235,9 +266,14 @@ export default function PassengerView() {
           />
         </View>
 
+        {searchFailed && (
+          <Text style={[styles.muted, { marginBottom: 8 }]}>
+            La búsqueda en vivo no está disponible; te mostramos rides de ejemplo.
+          </Text>
+        )}
+
         {rides.map((ride) => {
           const active = ride.id === selectedId;
-          const breakdown = priceOf(ride);
           return (
             <View key={ride.id}>
               <TouchableOpacity
@@ -249,7 +285,9 @@ export default function PassengerView() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.rideName}>
-                    {ride.driver} <Text style={styles.rating}>★ {ride.rating.toFixed(1)}</Text>
+                    {ride.driver}{' '}
+                    {ride.rating != null && <Text style={styles.rating}>★ {ride.rating.toFixed(1)}</Text>}
+                    {ride.live && <Text style={styles.liveLabel}> · En vivo</Text>}
                   </Text>
                   <Text style={[styles.muted, time === ride.departure && styles.match]}>
                     Sale {ride.departure}
@@ -260,7 +298,7 @@ export default function PassengerView() {
                     {ride.car} · {ride.seats} {ride.seats === 1 ? 'lugar' : 'lugares'}
                   </Text>
                 </View>
-                <Text style={styles.price}>{money(breakdown.passengerPays)}</Text>
+                <Text style={styles.price}>{money(priceOf(ride))}</Text>
               </TouchableOpacity>
 
             </View>

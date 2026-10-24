@@ -17,6 +17,14 @@ Requiere 006 T1–T4 (migración 004, compose, config, Jest).
   - API real con matching-py apagado: sin token `401`, con token `503`, fuera del bbox `400`, `passengerId` en body ignorado ✅
 - [x] T8 Integración (Testcontainers): vista actualizable y recorte P→D
   - `npm run test:int`: 5 tests ✅ (también con la imagen sin caché)
-- [ ] T9 Verificación manual con matching-py local (D2): búsqueda con un viaje sembrado de 006 → 1 resultado sin origen del conductor; matching-py parado → `503`; `match.shown` en `rides.events` con `XREVRANGE`
-  - Bloqueada: `POST /match` no existe aún en matching-py; crear viajes con ruta necesita 006 T9.
+- [x] T9 Verificación manual con matching-py local (D2): búsqueda con un viaje sembrado de 006 → 1 resultado sin origen del conductor; matching-py parado → `503`; `match.shown` en `rides.events` con `XREVRANGE`
+  - 2026-10-24, contra la versión de la VM (`96f4a5e`) con Postgres 18, OSRM con el grafo real, matching-py de `Tremp_smart@main` y **Bedrock real**:
+    búsqueda `200` en 0.43 s con 1 resultado y ruta recortada a recogida → bajada; `match.shown` con el mismo `requestId`;
+    matching-py parado → `503`; `PATCH /preferences` → Bedrock → `users.pref_estructuradas` vía la vista ✅
+  - Hallazgos en matching-py: Claude 3.5 Haiku llegó a fin de vida en Bedrock (usar `us.anthropic.claude-haiku-5-5`);
+    el embedding no se guardaba por falta de `register_vector` en el pool de asyncpg (arreglo probado, pendiente en Tremp_smart).
+- [x] T9b App: `PassengerView` usa `POST /rides/search` (rides "En vivo" primero, de prueba como respaldo) y `driver.sexo` para "solo conductoras"
+  - `npm run typecheck` y `expo lint` de `mobile/` ✅; `toRide`/`departureFor` probados con una respuesta real ✅
+- [x] T9c `scripts/smoke-matching.sh` (sólo lecturas; en la VM también matching-py, osrm y errores de modelo de Bedrock)
+  - Contra el stack e2e: todo `ok` ✅
 - [ ] T10 README (endpoint, cómo levantar matching-py en local) y fila en `specs/README.md`

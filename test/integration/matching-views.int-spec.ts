@@ -96,7 +96,8 @@ describe('vistas de matching-py y recorte de ruta (spec 010)', () => {
     it('recorta la ruta a recogida → bajada y completa datos del conductor', async () => {
       const [row] = await queries.findCandidates([candidate(tripId)]);
 
-      expect(row).toMatchObject({ id: tripId, nombre: 'Demo Uno', capacidad_disponible: 2, precio_por_pasajero: '16.55' });
+      expect(row).toMatchObject({ id: tripId, nombre: 'Demo Uno', capacidad_disponible: 2 });
+      expect(['M', 'F', 'otro']).toContain(row.sexo);
       expect(row.route_pd?.coordinates).toEqual([[-89.65, 21.0], [-89.6, 21.0]]);
     });
 

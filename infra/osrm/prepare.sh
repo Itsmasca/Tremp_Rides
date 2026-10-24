@@ -3,6 +3,8 @@
 #   sh infra/osrm/prepare.sh
 # Deja yucatan.osrm* en infra/osrm/, que el servicio `osrm` de docker-compose monta en /data.
 set -eu
+# Git Bash (Windows) convierte rutas como /data/x en C:/Program Files/Git/data/x al pasarlas a docker.
+export MSYS_NO_PATHCONV=1
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 BBOX="${PENINSULA_BBOX:--90.5,19.5,-87.4,21.7}"
