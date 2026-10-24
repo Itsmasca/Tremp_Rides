@@ -10,3 +10,14 @@
 - [x] T7 README
 - [ ] T8 Despliegue de `infra/eventbridge.yaml` en la cuenta AWS
 - [ ] T9 Tests automatizados del publisher (lotes, fallo parcial, límite de tamaño)
+
+## Enmienda 1 (propuesta)
+
+- [ ] T10 Timeouts y reintentos configurables en `EventBridgeClient` — *AC5.1*
+- [ ] T11 Comprobación de credenciales al arrancar con mensaje de diagnóstico — *AC5.2*
+- [ ] T12 Validar `EVENTBRIDGE_BUS` como ARN y su región frente a `AWS_REGION` — *AC6.1*
+- [ ] T13 `infra/eventbridge.yaml`: política de recurso del bus en lugar de managed policy — *AC6.2*
+- [ ] T14 `infra/eventbridge-publisher.yaml` (cuenta B): rol + instance profile — *AC6.3*
+- [ ] T15 Runbook de despliegue en README — *AC6.4*
+- [ ] T16 Verificación: endpoint inalcanzable (≤ 15 s, el consumer sigue), sin credenciales (log), ARN de
+  otra región (falla al arrancar), `ValidateTemplate` de ambas plantillas

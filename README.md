@@ -12,6 +12,8 @@ npm run start:dev          # o: npm run build && npm start
 # todo en Docker:  docker compose up --build
 ```
 
+App móvil contra el backend de la VM (Cloudflare): `./scripts/mobile-vm.sh https://<tunel>` (ver `mobile/README.md`).
+
 ## API
 
 | Método | Ruta | Descripción |

@@ -29,4 +29,7 @@ Verificación por correo, recuperación de contraseña, refresh tokens, revocaci
 
 ## Verificación
 
-- `npx tsc --noEmit` sin errores. Pendiente probar contra Postgres con los `curl` del README del módulo.
+- `npx tsc --noEmit` sin errores.
+- Verificado contra Postgres (2026-10-24): register `201` con token, duplicado `409`; login `200` (correo en
+  mayúsculas normalizado), contraseña mala y correo inexistente → `401` con el mismo mensaje; `/auth/me` con
+  token `200` sin `password_hash`, sin token o token inválido `401`. Flujo completo desde la app (spec 004, T4c).

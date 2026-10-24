@@ -16,6 +16,8 @@ export const configuration = () => {
 
   return {
     port: int(process.env.PORT, 3000),
+    /** Orígenes del cliente web (Expo web). La app nativa no usa CORS. */
+    corsOrigins: list(process.env.CORS_ORIGINS ?? 'http://localhost:8081'),
     auth: {
       jwtSecret: process.env.JWT_SECRET ?? 'cambia-esto-en-produccion',
       jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '30d',

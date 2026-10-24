@@ -18,6 +18,9 @@ Login y registro llaman a `POST /auth/login` y `POST /auth/register` del backend
 La URL base está en `src/constants/api.ts`; para cambiarla sin tocar código (el túnel de Cloudflare cambia
 cada vez que se levanta) copia `.env.example` a `.env`, ajusta `EXPO_PUBLIC_API_URL` y reinicia con `npx expo start -c`.
 
+Atajo desde la raíz del repo: `./scripts/mobile-vm.sh https://<tunel>.trycloudflare.com` verifica que el backend de la VM
+responda (`/health`, `/auth/login`, CORS), escribe `mobile/.env` y arranca Expo (`--web`, `--tunnel`, `--check`, `--help`).
+
 ## Estructura
 
 ```
