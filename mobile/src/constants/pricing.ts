@@ -35,7 +35,8 @@ export type PriceBreakdown = {
   driverAbsorbs: number;
 };
 
-export function calculatePrice(km: number, category: VehicleCategory): PriceBreakdown {
+export function calculatePrice(rawKm: number, category: VehicleCategory): PriceBreakdown {
+  const km = Math.round(rawKm * 10) / 10; // evita 7.300000000000001
   const efficiency = EFFICIENCY_KM_L[category];
   const liters = km / efficiency;
   const fuelCost = liters * FUEL.pricePerLiter;

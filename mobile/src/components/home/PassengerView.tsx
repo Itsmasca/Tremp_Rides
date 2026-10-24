@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import PriceBreakdown from '@/components/PriceBreakdown';
 import { calculatePrice, money } from '@/constants/pricing';
 import { Colors, Radius } from '@/constants/theme';
 import { Ride, RIDES } from '@/data/rides';
@@ -28,7 +27,6 @@ export default function PassengerView() {
   const user = useUser();
   const [filter, setFilter] = useState<Filter>(user.womenOnly ? 'conductoras' : 'todos');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [showBreakdown, setShowBreakdown] = useState(false);
   const [requested, setRequested] = useState<Ride | null>(null);
   const [status, setStatus] = useState<RequestStatus>('esperando');
 
@@ -44,15 +42,13 @@ export default function PassengerView() {
   const pins = (requested ? [requested] : rides).map((r) => ({ id: r.id, coords: r.coords, title: r.driver }));
 
   const cancel = () => {
-    // Regla del issue #4: antes de que el conductor arranque no se cobra nada;
-    // a medio camino se cobra el 70% de la gasolina de los km ya recorridos (GPS).
     if (status === 'esperando') {
       setRequested(null);
       return;
     }
     Alert.alert(
       '¿Cancelar el viaje?',
-      'El conductor ya va en camino. Se te cobrará el 70% de la gasolina de los kilómetros que ya recorrió, medidos con GPS. Si cancelas antes de que arranque, no se cobra nada.',
+      'El conductor ya va en camino. Se te cobrará una parte del trayecto recorrido.',
       [
         { text: 'Seguir con el viaje', style: 'cancel' },
         { text: 'Cancelar viaje', style: 'destructive', onPress: () => setRequested(null) },
@@ -84,7 +80,7 @@ export default function PassengerView() {
             {accepted ? `${requested.driver.split(' ')[0]} aceptó tu lugar 🎉` : `Esperando a que ${requested.driver.split(' ')[0]} confirme…`}
           </Text>
           <Text style={styles.muted}>
-            {accepted ? 'El precio ya quedó fijo. Te avisamos cuando esté cerca.' : 'El precio queda fijo en cuanto acepte.'}
+            {accepted ? 'Te avisamos cuando esté cerca.' : 'Te avisamos en cuanto acepte tu lugar.'}
           </Text>
 
           <View style={styles.driverCard}>
@@ -102,22 +98,6 @@ export default function PassengerView() {
             </View>
           </View>
 
-          <View style={{ marginTop: 12 }}>
-            <PriceBreakdown
-              breakdown={breakdown}
-              category={requested.vehicle}
-              pickupKm={requested.pickupKm}
-              tripKm={requested.tripKm}
-              frozen={accepted}
-            />
-          </View>
-
-          <View style={styles.policy}>
-            <Ionicons name="information-circle-outline" size={18} color={Colors.textMuted} />
-            <Text style={styles.policyText}>
-              Si cancelas antes de que el conductor arranque, no pagas nada. Si cancela el conductor, tampoco.
-            </Text>
-          </View>
         </BottomSheet>
       </>
     );
@@ -175,10 +155,7 @@ export default function PassengerView() {
             <View key={ride.id}>
               <TouchableOpacity
                 activeOpacity={0.8}
-                onPress={() => {
-                  setSelectedId(ride.id);
-                  setShowBreakdown(false);
-                }}
+                onPress={() => setSelectedId(ride.id)}
                 style={[styles.rideRow, active && styles.rideRowActive]}>
                 <View style={styles.avatar}>
                   <Ionicons name={ride.vehicle === 'Sedan' ? 'car-sport' : 'car'} size={24} color={Colors.primary} />
@@ -191,26 +168,12 @@ export default function PassengerView() {
                     {ride.origin} · sale {ride.departure}
                   </Text>
                   <Text style={styles.muted}>
-                    {ride.car} · {breakdown.km} km · {ride.seats} {ride.seats === 1 ? 'lugar' : 'lugares'}
+                    {ride.car} · {ride.seats} {ride.seats === 1 ? 'lugar' : 'lugares'}
                   </Text>
                 </View>
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={styles.price}>{money(breakdown.passengerPays)}</Text>
-                  <Text style={styles.tiny}>70% gasolina</Text>
-                </View>
+                <Text style={styles.price}>{money(breakdown.passengerPays)}</Text>
               </TouchableOpacity>
 
-              {active && (
-                <View style={styles.breakdownWrap}>
-                  <TouchableOpacity style={styles.breakdownToggle} onPress={() => setShowBreakdown((v) => !v)}>
-                    <Text style={styles.breakdownToggleText}>¿Cómo se calcula?</Text>
-                    <Ionicons name={showBreakdown ? 'chevron-up' : 'chevron-down'} size={16} color={Colors.primaryDark} />
-                  </TouchableOpacity>
-                  {showBreakdown && (
-                    <PriceBreakdown breakdown={breakdown} category={ride.vehicle} pickupKm={ride.pickupKm} tripKm={ride.tripKm} />
-                  )}
-                </View>
-              )}
             </View>
           );
         })}
@@ -252,19 +215,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
     marginBottom: 6,
   },
-  rideRowActive: { borderColor: Colors.primary, backgroundColor: '#F0FDFF', marginBottom: 0, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 },
-  breakdownWrap: {
-    borderWidth: 2,
-    borderTopWidth: 0,
-    borderColor: Colors.primary,
-    borderBottomLeftRadius: Radius.md,
-    borderBottomRightRadius: Radius.md,
-    padding: 10,
-    marginBottom: 6,
-    gap: 8,
-  },
-  breakdownToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
-  breakdownToggleText: { fontSize: 13, fontWeight: '700', color: Colors.primaryDark },
+  rideRowActive: { borderColor: Colors.primary, backgroundColor: '#F0FDFF' },
   avatar: {
     width: 48,
     height: 48,
@@ -284,7 +235,6 @@ const styles = StyleSheet.create({
   rideName: { fontSize: 16, fontWeight: '700', color: Colors.text },
   rating: { fontSize: 13, fontWeight: '600', color: Colors.primaryDark },
   muted: { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
-  tiny: { fontSize: 11, color: Colors.textMuted },
   price: { fontSize: 18, fontWeight: '800', color: Colors.text },
   requestButton: {
     marginTop: 10,
@@ -305,8 +255,6 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     backgroundColor: Colors.background,
   },
-  policy: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', marginTop: 12, paddingHorizontal: 4 },
-  policyText: { flex: 1, fontSize: 12, color: Colors.textMuted, lineHeight: 17 },
   demoButton: { marginTop: 10, paddingVertical: 10, alignItems: 'center' },
   demoText: { color: Colors.primaryDark, fontSize: 13, fontWeight: '700' },
   cancelButton: {

@@ -26,7 +26,7 @@ src/
 ├── store/user.ts        # Estado global del usuario (rol, preferencias)
 ├── constants/theme.ts   # Paleta de colores, radios y sombras
 ├── constants/pricing.ts # Fórmula de precio (rendimiento, gasolina, 70/30)
-└── data/               # Datos de prueba (rides, catálogo de coches)
+└── data/rides.ts        # Datos de prueba (mock)
 ```
 
 ## Comandos útiles

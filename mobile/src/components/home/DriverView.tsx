@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import PillSelector from '@/components/PillSelector';
-import { calculatePrice, CATEGORY_LABEL, EFFICIENCY_KM_L, FUEL, money, VehicleCategory } from '@/constants/pricing';
+import { calculatePrice, CATEGORY_LABEL, money, VehicleCategory } from '@/constants/pricing';
 import { Colors, Radius, Shadow } from '@/constants/theme';
 import { PassengerRequest, REQUESTS } from '@/data/rides';
 import { useUser } from '@/store/user';
@@ -30,7 +30,7 @@ export default function DriverView() {
 
   const accept = (r: PassengerRequest) => {
     if (accepted.length >= seats) return;
-    // Al aceptar, el monto queda congelado (se guarda km, rendimiento, precio/L y resultado)
+    // Al aceptar, el monto queda fijo
     setAccepted((a) => [...a, r]);
     setRequests((list) => list.filter((x) => x.id !== r.id));
   };
@@ -39,7 +39,7 @@ export default function DriverView() {
   const cancelTrip = () => {
     Alert.alert(
       '¿Cancelar el viaje?',
-      'Si cancelas tú, los pasajeros no pagan nada. Se les avisará de inmediato.',
+      'Se avisará a los pasajeros de inmediato.',
       [
         { text: 'Volver', style: 'cancel' },
         {
@@ -55,7 +55,7 @@ export default function DriverView() {
     );
   };
 
-  const absorbedToday = accepted.reduce((sum, r) => sum + priceOf(r).driverAbsorbs, 0);
+  const earnedToday = accepted.reduce((sum, r) => sum + priceOf(r).passengerPays, 0);
   const pins = online && published ? [...requests, ...accepted].map((r) => ({ id: r.id, coords: r.coords, title: r.name })) : [];
 
   return (
@@ -89,24 +89,13 @@ export default function DriverView() {
             <View style={styles.onlineDot} />
             <Text style={styles.statusText}>En línea</Text>
             <View style={{ flex: 1 }} />
-            <Text style={styles.muted}>
-              {carName} · {EFFICIENCY_KM_L[category]} km/L
-            </Text>
-          </View>
-
-          {/* Precio de gasolina: lo fija el sistema, solo se muestra */}
-          <View style={styles.fuelRow}>
-            <Ionicons name="water-outline" size={18} color={Colors.primaryDark} />
-            <Text style={styles.fuelText}>
-              Gasolina {FUEL.name} · {money(FUEL.pricePerLiter)}/L
-            </Text>
-            <Text style={styles.fuelMeta}>Actualizado {FUEL.updatedAt}</Text>
+            <Text style={styles.muted}>{carName}</Text>
           </View>
 
           <View style={styles.stats}>
             <View style={styles.stat}>
-              <Text style={styles.statValue}>{money(absorbedToday)}</Text>
-              <Text style={styles.muted}>Absorbes hoy (30%)</Text>
+              <Text style={styles.statValue}>{money(earnedToday)}</Text>
+              <Text style={styles.muted}>Recibes hoy</Text>
             </View>
             <View style={styles.stat}>
               <Text style={styles.statValue}>
@@ -134,15 +123,6 @@ export default function DriverView() {
                 <TouchableOpacity style={styles.stepBtn} onPress={() => setSeats((s) => Math.min(6, s + 1))}>
                   <Ionicons name="add" size={22} color={Colors.text} />
                 </TouchableOpacity>
-              </View>
-
-              <View style={styles.infoBox}>
-                <Ionicons name="calculator-outline" size={18} color={Colors.primaryDark} />
-                <Text style={styles.infoText}>
-                  El precio lo calcula el sistema con los km de cada pasajero, el rendimiento de tu{' '}
-                  {CATEGORY_LABEL[category].toLowerCase()} y el precio de la gasolina. Cada pasajero paga el 70% de su
-                  gasolina y tú absorbes el 30%.
-                </Text>
               </View>
 
               <TouchableOpacity activeOpacity={0.85} style={styles.publish} onPress={() => setPublished(true)}>
@@ -175,11 +155,9 @@ export default function DriverView() {
                         {r.name} <Text style={styles.rating}>★ {r.rating.toFixed(1)}</Text>
                       </Text>
                       <Text style={styles.muted}>
-                        {r.pickup} · {r.pickupKm} km + {r.tripKm} km
+                        {r.pickup} · {b.km} km
                       </Text>
-                      <Text style={styles.amount}>
-                        Paga {money(b.passengerPays)} · absorbes {money(b.driverAbsorbs)}
-                      </Text>
+                      <Text style={styles.amount}>{money(b.passengerPays)}</Text>
                     </View>
                     <TouchableOpacity style={styles.rejectBtn} onPress={() => reject(r)}>
                       <Ionicons name="close" size={20} color={Colors.danger} />
@@ -200,17 +178,12 @@ export default function DriverView() {
                     const b = priceOf(r);
                     return (
                       <View key={r.id} style={styles.requestRow}>
-                        <Ionicons name="lock-closed" size={20} color={Colors.primary} />
+                        <Ionicons name="checkmark-circle" size={22} color={Colors.primary} />
                         <View style={{ flex: 1 }}>
                           <Text style={styles.name}>{r.name}</Text>
-                          <Text style={styles.muted}>
-                            {r.pickup} · {b.km} km · {b.liters.toFixed(2)} L
-                          </Text>
+                          <Text style={styles.muted}>{r.pickup}</Text>
                         </View>
-                        <View style={{ alignItems: 'flex-end' }}>
-                          <Text style={styles.name}>{money(b.passengerPays)}</Text>
-                          <Text style={styles.tiny}>congelado</Text>
-                        </View>
+                        <Text style={styles.name}>{money(b.passengerPays)}</Text>
                       </View>
                     );
                   })}
@@ -252,23 +225,10 @@ const styles = StyleSheet.create({
   },
   offlineTitle: { fontSize: 20, fontWeight: '800', color: Colors.text },
   muted: { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
-  tiny: { fontSize: 11, color: Colors.textMuted },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   onlineDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#22C55E' },
   statusText: { fontSize: 18, fontWeight: '800', color: Colors.text },
-  fuelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.primarySoft,
-  },
-  fuelText: { flex: 1, fontSize: 13, fontWeight: '700', color: Colors.primaryDark },
-  fuelMeta: { fontSize: 11, color: Colors.primaryDark },
-  stats: { flexDirection: 'row', gap: 10, marginTop: 12 },
+  stats: { flexDirection: 'row', gap: 10, marginTop: 14 },
   stat: { flex: 1, backgroundColor: Colors.background, borderRadius: Radius.md, padding: 12, alignItems: 'center' },
   statValue: { fontSize: 18, fontWeight: '800', color: Colors.text },
   section: { fontSize: 17, fontWeight: '800', color: Colors.text, marginTop: 20, marginBottom: 10 },
@@ -283,17 +243,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stepValue: { fontSize: 22, fontWeight: '800', color: Colors.text, minWidth: 24, textAlign: 'center' },
-  infoBox: {
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'flex-start',
-    marginTop: 18,
-    padding: 12,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.background,
-  },
-  infoText: { flex: 1, fontSize: 13, color: Colors.textSecondary, lineHeight: 18 },
-  publish: { marginTop: 16, backgroundColor: Colors.primary, borderRadius: Radius.md, paddingVertical: 16, alignItems: 'center' },
+  publish: { marginTop: 20, backgroundColor: Colors.primary, borderRadius: Radius.md, paddingVertical: 16, alignItems: 'center' },
   publishText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
   tripCard: {
     flexDirection: 'row',

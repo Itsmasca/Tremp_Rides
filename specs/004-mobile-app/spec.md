@@ -26,17 +26,9 @@ solicitudes que acepta/rechaza hasta llenar la capacidad.
 
 ## Precio del viaje (issue #4)
 
-Todo lo calcula el servidor; la app solo lo muestra y no tiene inputs para editarlo (`mobile/src/constants/pricing.ts`
-replica la fórmula con los valores iniciales mientras no hay backend):
-
-- Rendimiento fijo por categoría del catálogo: Sedán 11 km/L · SUV 9 km/L · Camioneta 7 km/L. El conductor elige su coche
-  de un catálogo (`mobile/src/data/vehicles.ts`) y sube documentos para validarlo; no puede escribir el rendimiento.
-- Gasolina Premium (Yucatán) $27.39/L, actualizada por el sistema; se muestra como solo lectura al conductor.
-- `km = tramo conductor→recogida + recogida→destino` (calculados por el navegador en el servidor).
-- `litros = km / rendimiento` → `costo = litros × precio_litro` → `pasajero = costo × 0.70` → `conductor = costo − pasajero`.
-- El pasajero ve el monto y un desglose ("¿Cómo se calcula?"). Al aceptar el conductor, el monto se muestra como congelado.
-- Cancelaciones: pasajero antes de arrancar → $0; pasajero a medio camino → 70% de la gasolina de los km recorridos (GPS);
-  conductor → el pasajero no paga. La app lo avisa en el diálogo de cancelar.
+La app muestra únicamente el monto final que paga el pasajero; no explica la fórmula ni expone inputs de precio.
+Mientras no hay backend, `mobile/src/constants/pricing.ts` replica el cálculo del issue (km ÷ rendimiento por categoría
+× gasolina Premium × 70%) con los valores iniciales. El conductor solo elige hora de salida y lugares.
 
 ## Reglas alineadas con el esquema (`db/schema.sql`)
 - Sólo correos `@anahuac.mx` (pendiente validar en la app).
@@ -47,4 +39,3 @@ replica la fórmula con los valores iniciales mientras no hay backend):
 - [ ] Conectar login/registro/rides con la API del backend.
 - [ ] Subida real de foto de perfil.
 - [ ] Validar dominio `@anahuac.mx` en el formulario.
-- [ ] Subida real de documentos del vehículo.
