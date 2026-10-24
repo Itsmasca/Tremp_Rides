@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConditionalModule, ConfigModule } from '@nestjs/config';
+import { AuthModule } from './auth/auth.module';
 import { CacheModule } from './cache/cache.module';
 import { bool, configuration } from './config/configuration';
 import { DatabaseModule } from './database/database.module';
@@ -21,6 +22,7 @@ import { UsersModule } from './users/users.module';
     LocationModule,
     PreferencesModule,
     UsersModule,
+    AuthModule,
     ConditionalModule.registerWhen(EventBridgeModule, (env) => bool(env.EVENTBRIDGE_ENABLED)),
   ],
   controllers: [HealthController],
