@@ -1,0 +1,151 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Trempapp - instancia RDS PostgreSQL (datos permanentes). Spec 002-postgres.
+
+# NOTA: esta plantilla NO se despliega sola. El equipo la revisa y la lanza con:
+#   aws cloudformation deploy \
+#     --template-file infra/rds.yaml \
+#     --stack-name trempapp-rds \
+#     --parameter-overrides VpcId=vpc-xxxx SubnetIds=subnet-aaa,subnet-bbb \
+#                           AppSecurityGroupId=sg-del-backend \
+#     --capabilities CAPABILITY_NAMED_IAM
+# El esquema (db/schema.sql) NO se aplica automáticamente en RDS: hay que cargarlo
+# a mano (psql) o con una herramienta de migraciones, a diferencia del contenedor local.
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC donde vive el backend (EC2/ECS). La RDS queda privada en esta VPC.
+
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: >-
+      Al menos 2 subnets en AZs distintas (privadas, recomendado) para el DB Subnet Group.
+
+  AppSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: >-
+      Security Group del backend. Solo este SG podra conectarse al puerto de PostgreSQL.
+
+  DBName:
+    Type: String
+    Default: trempapp
+    Description: Debe coincidir con DB_NAME del backend.
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9_]*'
+
+  MasterUsername:
+    Type: String
+    Default: trempapp
+    Description: Debe coincidir con DB_USER del backend.
+    AllowedPattern: '[a-zA-Z][a-zA-Z0-9_]*'
+
+  EngineVersion:
+    Type: String
+    Default: '17.4'
+    Description: Version de PostgreSQL. Alinear con el contenedor local (postgres:17-alpine).
+
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.micro
+    Description: Tamano de la instancia. db.t3.micro para demo/dev.
+
+  AllocatedStorage:
+    Type: Number
+    Default: 20
+    MinValue: 20
+    Description: Almacenamiento en GB (gp3).
+
+  BackupRetentionDays:
+    Type: Number
+    Default: 1
+    MinValue: 0
+    MaxValue: 35
+    Description: Dias de retencion de backups. 1 = demo. Sube a 7 para produccion.
+
+  MultiAZ:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: 'true para produccion (alta disponibilidad). false para demo.'
+
+Resources:
+  # Password del maestro generado y guardado en Secrets Manager (nunca en texto plano).
+  DBSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${DBName}-rds-master'
+      Description: Credenciales del usuario maestro de la RDS de Trempapp.
+      GenerateSecretString:
+        SecretStringTemplate: !Sub '{"username":"${MasterUsername}"}'
+        GenerateStringKey: password
+        PasswordLength: 24
+        ExcludeCharacters: '"@/\ '''
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnets privadas para la RDS de Trempapp.
+      SubnetIds: !Ref SubnetIds
+
+  # SG de la base: solo acepta 5432 desde el SG del backend. Sin acceso publico.
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Acceso a PostgreSQL solo desde el backend de Trempapp.
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref AppSecurityGroupId
+          Description: PostgreSQL desde el backend.
+      Tags:
+        - Key: Name
+          Value: !Sub '${DBName}-rds-sg'
+
+  Database:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub '${DBName}-postgres'
+      Engine: postgres
+      EngineVersion: !Ref EngineVersion
+      DBName: !Ref DBName
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref AllocatedStorage
+      StorageType: gp3
+      StorageEncrypted: true
+      MasterUsername: !Sub '{{resolve:secretsmanager:${DBSecret}:SecretString:username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${DBSecret}:SecretString:password}}'
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !Ref DBSecurityGroup
+      PubliclyAccessible: false
+      MultiAZ: !Ref MultiAZ
+      BackupRetentionPeriod: !Ref BackupRetentionDays
+      DeletionProtection: false
+      Tags:
+        - Key: Project
+          Value: trempapp
+
+  # Asocia el secreto a la instancia para poder rotarlo luego si se quiere.
+  SecretAttachment:
+    Type: AWS::SecretsManager::SecretTargetAttachment
+    Properties:
+      SecretId: !Ref DBSecret
+      TargetId: !Ref Database
+      TargetType: AWS::RDS::DBInstance
+
+Outputs:
+  DBEndpoint:
+    Description: Host para DB_HOST del backend.
+    Value: !GetAtt Database.Endpoint.Address
+  DBPort:
+    Description: Puerto para DB_PORT del backend.
+    Value: !GetAtt Database.Endpoint.Port
+  DBSecretArn:
+    Description: ARN del secreto con usuario/password (leer DB_USER/DB_PASSWORD desde aqui).
+    Value: !Ref DBSecret
+  DBSecurityGroupId:
+    Description: SG de la base (referencia desde el backend si hace falta).
+    Value: !Ref DBSecurityGroup

@@ -1,0 +1,9 @@
+
+> trempapp-backend@0.1.0 build
+> nest build
+
+-  TSC  Initializing type checker...
+[32m√[39m  TSC  Initializing type checker...
+>  TSC  Found 0 issues.
+>  SWC  Running...
+Successfully compiled: 30 files with swc (172.04ms)
