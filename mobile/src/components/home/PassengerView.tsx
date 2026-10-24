@@ -9,18 +9,22 @@ import { ANAHUAC, Ride, RIDES, RideTime, TIMES } from '@/data/rides';
 import { useDriverLocation } from '@/hooks/useDriverLocation';
 import { useUserLocation } from '@/hooks/useUserLocation';
 import { setUser, useUser } from '@/store/user';
-import { distanceKm, etaMinutes } from '@/utils/geo';
+import { distanceKm, etaMinutes, lerp } from '@/utils/geo';
 
 import BottomSheet from './BottomSheet';
 import MapBackground from './MapBackground';
 
-type RequestStatus = 'esperando' | 'aceptado';
+// esperando: el conductor no ha aceptado · aceptado: viene por ti · en_viaje: rumbo a la Anáhuac
+type RequestStatus = 'esperando' | 'aceptado' | 'en_viaje';
 
 // El precio siempre lo calcula el sistema a partir de los km del servidor
 const priceOf = (r: Ride) => calculatePrice(r.pickupKm + r.tripKm, r.vehicle);
 
 // A menos de esto (km) consideramos que el conductor ya llegó
 const ARRIVED_KM = 0.08;
+// Demo: segundos que tarda el conductor simulado en cada tramo
+const DEMO_PICKUP_SECONDS = 45;
+const DEMO_TRIP_SECONDS = 45;
 
 export default function PassengerView() {
   const user = useUser();
@@ -28,19 +32,29 @@ export default function PassengerView() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [requested, setRequested] = useState<Ride | null>(null);
   const [status, setStatus] = useState<RequestStatus>('esperando');
+  const [stars, setStars] = useState(0);
   const { coords: me } = useUserLocation();
 
-  // Cuando el conductor acepta, seguimos su ubicación en vivo hasta el punto de recogida
-  const accepted = !!requested && status === 'aceptado';
+  // Punto de recogida = mi GPS. Sin GPS (solo en la demo) usamos un punto entre el conductor y la Anáhuac
+  const pickup = me ?? lerp(requested?.coords ?? ANAHUAC, ANAHUAC, 0.4);
+  const tracking = !!requested && (status === 'aceptado' || status === 'en_viaje');
+  const onTrip = status === 'en_viaje';
+  const goal = onTrip ? ANAHUAC : pickup;
+
+  // Ubicación en vivo del conductor: primero viene por mí, luego vamos juntos a la Anáhuac
   const { coords: driverAt, live } = useDriverLocation({
-    active: accepted,
+    active: tracking,
     driverId: requested?.driverId,
-    start: requested?.coords ?? ANAHUAC,
-    pickup: me,
+    start: onTrip ? pickup : (requested?.coords ?? ANAHUAC),
+    target: goal,
+    demoSeconds: onTrip ? DEMO_TRIP_SECONDS : DEMO_PICKUP_SECONDS,
+    stage: status,
   });
-  // Sin GPS (solo en la demo) usamos la Anáhuac como punto de recogida
-  const driverKm = driverAt ? distanceKm(driverAt, me ?? ANAHUAC) : null;
-  const arrived = driverKm !== null && driverKm <= ARRIVED_KM;
+  const driverKm = driverAt ? distanceKm(driverAt, goal) : null;
+  const near = driverKm !== null && driverKm <= (onTrip ? ARRIVED_KM * 2 : ARRIVED_KM);
+  const accepted = status === 'aceptado';
+  const arrivedPickup = accepted && near;
+  const finished = onTrip && near;
 
   const rides = useMemo(() => {
     // "Solo conductoras" viene del registro; no es un filtro que se cambie aquí
@@ -52,7 +66,14 @@ export default function PassengerView() {
 
   const selected = rides.find((r) => r.id === selectedId) ?? null;
   // Ya aceptado: en lugar del pin fijo se ve el carrito del conductor moviéndose
-  const pins = (requested ? (accepted && driverAt ? [] : [requested]) : rides).map((r) => ({ id: r.id, coords: r.coords, title: r.driver }));
+  const pins = (requested ? (tracking && driverAt ? [] : [requested]) : rides).map((r) => ({ id: r.id, coords: r.coords, title: r.driver }));
+
+  const reset = () => {
+    setRequested(null);
+    setSelectedId(null);
+    setStatus('esperando');
+    setStars(0);
+  };
 
   const cancel = () => {
     if (status === 'esperando') {
@@ -64,7 +85,7 @@ export default function PassengerView() {
       'El conductor ya va en camino. Se te cobrará una parte del trayecto recorrido.',
       [
         { text: 'Seguir con el viaje', style: 'cancel' },
-        { text: 'Cancelar viaje', style: 'destructive', onPress: () => setRequested(null) },
+        { text: 'Cancelar viaje', style: 'destructive', onPress: reset },
       ],
     );
   };
@@ -72,37 +93,81 @@ export default function PassengerView() {
   if (requested) {
     const breakdown = priceOf(requested);
     const first = requested.driver.split(' ')[0];
-    let liveText = 'Te avisamos cuando esté cerca.';
-    if (accepted && arrived) liveText = `${first} ya llegó a tu punto de recogida.`;
-    else if (accepted && driverKm !== null) liveText = `A ${driverKm.toFixed(1)} km · llega en ~${etaMinutes(driverKm)} min`;
-    else if (accepted && !live) liveText = `Esperando la ubicación de ${first}…`;
+
+    let title = `Esperando a que ${first} confirme…`;
+    let subtitle = 'Te avisamos en cuanto acepte tu lugar.';
+    if (finished) {
+      title = '¡Llegaste a la Anáhuac! 🎓';
+      subtitle = `Gracias por viajar con ${first}. ¿Cómo estuvo tu viaje?`;
+    } else if (onTrip) {
+      title = 'Rumbo a la Anáhuac 🎓';
+      subtitle = driverKm !== null ? `Faltan ${driverKm.toFixed(1)} km · llegas en ~${etaMinutes(driverKm)} min` : 'Calculando…';
+    } else if (arrivedPickup) {
+      title = `¡${first} llegó! 🚗`;
+      subtitle = `Súbete al ${requested.car}. Cuando estés arriba, inicia el viaje.`;
+    } else if (accepted) {
+      title = `${first} va en camino 🚗`;
+      subtitle =
+        driverKm !== null
+          ? `A ${driverKm.toFixed(1)} km · llega en ~${etaMinutes(driverKm)} min`
+          : `Esperando la ubicación de ${first}…`;
+    }
+
+    let footer = (
+      <View style={{ gap: 8 }}>
+        {status === 'esperando' && (
+          // Solo para la demo: simula que el conductor acepta
+          <TouchableOpacity style={styles.demoButton} onPress={() => setStatus('aceptado')}>
+            <Text style={styles.demoText}>Simular que el conductor acepta</Text>
+          </TouchableOpacity>
+        )}
+        {arrivedPickup && (
+          <TouchableOpacity activeOpacity={0.85} style={styles.requestButton} onPress={() => setStatus('en_viaje')}>
+            <Text style={styles.requestText}>Ya me subí · Iniciar viaje</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity style={styles.cancelButton} onPress={cancel}>
+          <Text style={styles.cancelText}>{accepted ? 'Cancelar viaje' : 'Cancelar solicitud'}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+    if (onTrip && !finished) {
+      footer = (
+        <View style={styles.tripNote}>
+          <Ionicons name="shield-checkmark-outline" size={18} color={Colors.primaryDark} />
+          <Text style={styles.tripNoteText}>Viaje en curso · {money(breakdown.passengerPays)}</Text>
+        </View>
+      );
+    } else if (finished) {
+      footer = (
+        <TouchableOpacity activeOpacity={0.85} style={styles.requestButton} onPress={reset}>
+          <Text style={styles.requestText}>{stars ? 'Enviar y terminar' : 'Terminar'}</Text>
+        </TouchableOpacity>
+      );
+    }
+
     return (
       <>
-        <MapBackground pins={pins} selectedId={requested.id} driver={accepted ? driverAt : null} />
-        <BottomSheet
-          footer={
-            <View style={{ gap: 8 }}>
-              {!accepted && (
-                // Solo para la demo: simula que el conductor acepta
-                <TouchableOpacity style={styles.demoButton} onPress={() => setStatus('aceptado')}>
-                  <Text style={styles.demoText}>Simular que el conductor acepta</Text>
-                </TouchableOpacity>
-              )}
-              <TouchableOpacity style={styles.cancelButton} onPress={cancel}>
-                <Text style={styles.cancelText}>{accepted ? 'Cancelar viaje' : 'Cancelar solicitud'}</Text>
-              </TouchableOpacity>
-            </View>
-          }>
-          <Text style={styles.waitingTitle}>
-            {!accepted ? `Esperando a que ${first} confirme…` : arrived ? `¡${first} llegó! 🚗` : `${first} va en camino 🚗`}
-          </Text>
-          {accepted && live && !arrived && (
+        <MapBackground pins={pins} selectedId={requested.id} driver={tracking && !finished ? driverAt : null} />
+        <BottomSheet footer={footer}>
+          <Text style={styles.waitingTitle}>{title}</Text>
+          {tracking && live && !near && (
             <View style={styles.liveRow}>
               <View style={styles.liveDot} />
               <Text style={styles.liveLabel}>Ubicación en tiempo real</Text>
             </View>
           )}
-          <Text style={styles.muted}>{accepted ? liveText : 'Te avisamos en cuanto acepte tu lugar.'}</Text>
+          <Text style={styles.muted}>{subtitle}</Text>
+
+          {finished && (
+            <View style={styles.starsRow}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <TouchableOpacity key={n} onPress={() => setStars(n)} hitSlop={6}>
+                  <Ionicons name={n <= stars ? 'star' : 'star-outline'} size={34} color="#F59E0B" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
           <View style={styles.driverCard}>
             <View style={styles.avatarLg}>
@@ -115,10 +180,9 @@ export default function PassengerView() {
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={styles.price}>{money(breakdown.passengerPays)}</Text>
-              <Text style={styles.muted}>{requested.departure}</Text>
+              <Text style={styles.muted}>{finished ? 'Total del viaje' : requested.departure}</Text>
             </View>
           </View>
-
         </BottomSheet>
       </>
     );
@@ -267,6 +331,18 @@ const styles = StyleSheet.create({
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' },
   liveLabel: { fontSize: 12, fontWeight: '700', color: '#16A34A' },
+  starsRow: { flexDirection: 'row', justifyContent: 'center', gap: 10, marginTop: 14 },
+  tripNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10,
+    paddingVertical: 14,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.primarySoft,
+  },
+  tripNoteText: { fontSize: 15, fontWeight: '700', color: Colors.primaryDark },
   driverCard: {
     flexDirection: 'row',
     alignItems: 'center',

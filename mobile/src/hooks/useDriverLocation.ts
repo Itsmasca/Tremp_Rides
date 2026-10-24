@@ -1,75 +1,58 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { getLocation } from '@/api/location';
-import { ANAHUAC, Coords } from '@/data/rides';
+import { Coords } from '@/data/rides';
+import { useRouteSimulation } from '@/hooks/useRouteSimulation';
 import { useUser } from '@/store/user';
-import { lerp } from '@/utils/geo';
 
 // Cada cuánto pregunta el pasajero por la posición del conductor
 const POLL_MS = 3000;
-// Demo: segundos que tarda el conductor simulado en llegar
-const DEMO_SECONDS = 60;
 
 type Args = {
-  active: boolean; // true cuando el conductor ya aceptó
+  active: boolean; // true mientras hay que seguir al conductor
   driverId?: string; // id real del conductor en el backend
-  start: Coords; // de dónde sale el conductor (para la demo)
-  pickup: Coords | null; // dónde lo espera el pasajero
+  start: Coords; // de dónde sale el conductor (solo para la demo)
+  target: Coords; // hacia dónde va (recogida o la Anáhuac; solo para la demo)
+  demoSeconds: number; // cuánto tarda el recorrido simulado
+  stage: string; // cambia de etapa (ir por el pasajero / ir a la Anáhuac) y reinicia la demo
 };
 
 // Pasajero: posición en vivo del conductor.
 // - Si el conductor es un usuario real, la lee del backend cada 3 s (GET /location/:id).
-// - Si es un ride de prueba (sin id real), simula que se acerca al punto de recogida.
-export function useDriverLocation({ active, driverId, start, pickup }: Args) {
+// - Si es un ride de prueba (sin id real), simula el recorrido de `start` a `target`.
+export function useDriverLocation({ active, driverId, start, target, demoSeconds, stage }: Args) {
   const { token } = useUser();
-  const [coords, setCoords] = useState<Coords | null>(null);
+  const [real, setReal] = useState<Coords | null>(null);
   const [live, setLive] = useState(false);
-  const target = useRef<Coords>(ANAHUAC);
 
-  // Siempre apuntamos a la posición más reciente del pasajero
-  useEffect(() => {
-    target.current = pickup ?? ANAHUAC;
-  }, [pickup]);
+  const route = useMemo(() => [start, target], [start, target]);
+  const demo = useRouteSimulation(active && !driverId, route, demoSeconds, stage);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active || !driverId) return;
     let stop = false;
-    let timer: ReturnType<typeof setInterval>;
-
-    if (driverId) {
-      const tick = async () => {
-        try {
-          const l = await getLocation(driverId, token);
-          if (stop) return;
-          setLive(!!l);
-          if (l) setCoords({ latitude: l.latitude, longitude: l.longitude });
-        } catch {
-          if (!stop) setLive(false);
-        }
-      };
-      timer = setInterval(tick, POLL_MS);
-      setTimeout(tick, 0);
-    } else {
-      // Demo sin backend: avanza un poco cada segundo hasta llegar
-      const startedAt = Date.now();
-      const tick = () => {
+    const tick = async () => {
+      try {
+        const l = await getLocation(driverId, token);
         if (stop) return;
-        const t = Math.min(1, (Date.now() - startedAt) / (DEMO_SECONDS * 1000));
-        setLive(true);
-        setCoords(lerp(start, target.current, t));
-        if (t >= 1) clearInterval(timer);
-      };
-      timer = setInterval(tick, 1000);
-      setTimeout(tick, 0);
-    }
-
+        setLive(!!l);
+        if (l) setReal({ latitude: l.latitude, longitude: l.longitude });
+      } catch {
+        if (!stop) setLive(false);
+      }
+    };
+    const timer = setInterval(tick, POLL_MS);
+    const first = setTimeout(tick, 0);
     return () => {
       stop = true;
       clearInterval(timer);
-      setCoords(null);
+      clearTimeout(first);
+      setReal(null);
       setLive(false);
     };
-  }, [active, driverId, token, start]);
+  }, [active, driverId, token]);
 
-  return { coords: active ? coords : null, live: active && live };
+  if (!active) return { coords: null, live: false };
+  if (driverId) return { coords: real, live };
+  return { coords: demo.coords, live: !!demo.coords };
 }
