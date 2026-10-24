@@ -4,7 +4,7 @@ name: Deploy API
 on:
   push:
     branches: [main]
-    paths-ignore: ['mobile/**', 'specs/**', '**.md']
+    paths-ignore: ['mobile/**', 'specs/**', 'scripts/**', '**.md']
   workflow_dispatch:
 
 permissions:

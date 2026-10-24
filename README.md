@@ -161,6 +161,18 @@ levantar la imagen anterior). También se puede lanzar a mano desde la pestaña 
 sudo /usr/local/bin/tremp-deploy latest
 ```
 
+### Demo en vivo
+
+`scripts/demo-simulacion.sh` simula un viaje completo con las cuentas demo `demo4@anahuac.mx` (conductora) y
+`demo5@anahuac.mx` (pasajera): solicitud, aceptación con pago retenido, acercamiento al punto de recogida, 5 min de
+tolerancia con cuenta regresiva, recorrido y cobro (70% de la gasolina + comisión de $10). Con `--no-llega` se agota
+la tolerancia y se cancela cobrando el 70% de la gasolina ya manejada. La ubicación sólo va a Redis con TTL; los
+eventos llevan km y minutos. Se ve en vivo en el dashboard `trempapp-demo` de CloudWatch (refresco de 10 s).
+
+```bash
+DEMO_PASSWORD=... ./scripts/demo-simulacion.sh https://<tunel>.trycloudflare.com [--rapido] [--no-llega]
+```
+
 ### Logs y alertas (CloudWatch)
 
 `tremp-deploy` levanta la API con el driver `awslogs` (y `NO_COLOR=1`): los logs van al log group `/trempapp/api`
