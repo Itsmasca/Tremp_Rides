@@ -12,6 +12,15 @@ npx expo start
 Escanea el QR con **Expo Go** en tu celular (misma red WiFi), o presiona `w` para abrir en el navegador.
 Si algo se traba: `npx expo start -c` (limpia la caché).
 
+### En el navegador de la laptop
+
+```bash
+npx expo start --web
+```
+
+Abre http://localhost:8081. Es la misma app con el mapa real (MapLibre + OpenFreeMap en un iframe).
+El backend ya acepta peticiones desde `http://localhost:8081` (`CORS_ORIGINS` en su `.env`).
+
 ## Conectar con el backend
 
 Login y registro llaman a `POST /auth/login` y `POST /auth/register` del backend (NestJS, en la raíz del repo).
